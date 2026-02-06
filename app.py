@@ -3,7 +3,7 @@ eventlet.monkey_patch()
 
 import os
 
-from flask import Flask, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_migrate import Migrate
 from flask_login import LoginManager, current_user
 from config import Config
