@@ -15,9 +15,8 @@ services:
     depends_on:
       - db
     volumes:
-      - ./static/uploads:/app/static/uploads
-      # Uncomment the next line for development (live reload)
-      # - .:/app
+      - .:/app
+      - /app/static/uploads
 
   db:
     image: postgres:15

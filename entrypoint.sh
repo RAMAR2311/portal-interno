@@ -1,20 +1,17 @@
 #!/bin/sh
 
 # Esperar a que la base de datos esté lista
-echo "Esperando a la base de datos..."
+echo "Esperando a postgres..."
 while ! nc -z db 5432; do
   sleep 0.1
 done
-echo "Base de datos iniciada"
+echo "PostgreSQL listo"
 
-# Aplicar migraciones
-echo "Aplicando migraciones..."
-flask db upgrade
+# Crear las tablas automáticamente
+python3 -c "from app import app; from models import db; with app.app_context(): db.create_all()"
 
-# Crear datos semilla (admin)
-echo "Verificando/Creando usuario administrador..."
-python seed_admin.py
+# Crear el admin por defecto
+python3 seed_admin.py
 
-# Iniciar Gunicorn
-echo "Iniciando servidor..."
+# Iniciar la app con Eventlet
 exec gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:8000 app:app
