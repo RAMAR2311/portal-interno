@@ -5,15 +5,14 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Instalar dependencias del sistema necesarias
-# - build-essential y libpq-dev para compilar/conectar PostgreSQL
-# - librerías para reportlab y procesamiento de imágenes (cairo, pango)
+# Se incluyen herramientas de compilación y librerías de desarrollo para Cairo/Pango
 RUN apt-get update && apt-get install -y \
     build-essential \
+    pkg-config \
     libpq-dev \
-    libcairo2 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    gdk-pixbuf2.0-0 \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libgdk-pixbuf2.0-dev \
     libffi-dev \
     shared-mime-info \
     netcat-openbsd \
