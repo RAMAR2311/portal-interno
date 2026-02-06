@@ -174,7 +174,7 @@
     // Global function for Sidebar Selection
     let selectedUserId;
     let calendarInstance = null;
-    let currentUserId = {{ current_user.id }};
+    let currentUserId = parseInt("{{ current_user.id }}");
 
     document.addEventListener('DOMContentLoaded', function () {
         var calendarEl = document.getElementById('calendar');

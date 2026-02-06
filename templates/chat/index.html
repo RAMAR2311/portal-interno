@@ -183,16 +183,15 @@
         // Navigate to room
         // Consistent naming with backend
         let roomId;
-        const myId = {{ current_user.id }
-    };
+        const myId = parseInt("{{ current_user.id }}");
 
-    if (currentChatType === 'group') {
-        roomId = `video_group_${currentChatId}`;
-    } else {
-        roomId = `video_user_${myId}_${currentChatId}`;
-    }
+        if (currentChatType === 'group') {
+            roomId = `video_group_${currentChatId}`;
+        } else {
+            roomId = `video_user_${myId}_${currentChatId}`;
+        }
 
-    window.location.href = `/chat/video_room/${roomId}`;
+        window.location.href = `/chat/video_room/${roomId}`;
     };
 
 
