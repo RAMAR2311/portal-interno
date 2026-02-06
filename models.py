@@ -13,7 +13,7 @@ def get_bogota_time():
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.String(512))
     rol = db.Column(db.String(20), nullable=False)  # 'Admin', 'Empleado'
     nombre = db.Column(db.String(100), nullable=False)
     cargo = db.Column(db.String(100))
