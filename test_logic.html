@@ -1,0 +1,5 @@
+{% if current_user.is_authenticated %}
+if (data.caller_id == {{ current_user.id }}) {
+return;
+}
+{% endif %}
