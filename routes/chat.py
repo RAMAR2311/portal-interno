@@ -70,29 +70,22 @@ def handle_stop_typing(data):
 # Track active call occupancy: room_id -> set(socket_id)
 video_rooms = {}
 
-@socketio.on('start_group_call')
-def handle_start_group_call(data):
-    """
-    Broadcasts a 'call initiated' notification to all members of a group (or a specific user).
-    This doesn't start the video yet, just shows the notification banner.
-    """
-    group_id = data.get('group_id')
-    recipient_id = data.get('recipient_id')
-    
-    room_id = f"video_group_{group_id}" if group_id else f"video_user_{current_user.id}_{recipient_id}"
-    notification_room = f"group_{group_id}" if group_id else str(recipient_id)
-    
-    # Payload for the notification
-    payload = {
+@socketio.on('join_video_call')
+def handle_join_video(data):
+    room = data.get('room_id') # ID del grupo o chat
+    join_room(room)
+    # Notificar a los demás en el grupo que alguien entró (máximo 8)
+    emit('user_joined_call', {'user_id': current_user.id}, room=room, include_self=False)
+
+@socketio.on('start_call')
+def handle_start_call(data):
+    room = data.get('room_id')
+    # Emitir notificación global de llamada entrante
+    emit('incoming_call', {
         'caller_id': current_user.id,
         'caller_name': current_user.nombre,
-        'room_id': room_id, # The room they should join
-        'group_id': group_id,
-        'type': 'group' if group_id else 'direct'
-    }
-    
-    # Notify everyone in the chat room that a call started
-    emit('incoming_call', payload, room=notification_room)
+        'room_id': room
+    }, room=room, include_self=False)
 
 @socketio.on('join_video_room')
 def handle_join_video_room(data):
