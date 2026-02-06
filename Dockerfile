@@ -1,5 +1,5 @@
 # Usar una imagen base oficial de Python
-FROM python:3.9-slim
+FROM python:3.12-slim
 
 # Establecer el directorio de trabajo
 WORKDIR /app
@@ -23,14 +23,12 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Instalar dependencias de Python
-# Agregamos gunicorn, eventlet (para socketio) y psycopg2-binary por si faltan
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install gunicorn eventlet psycopg2-binary
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar el resto del código de la aplicación
 COPY . .
 
-# Dar permisos de ejecución al script de entrada (si se usa uno, lo crearemos)
+# Dar permisos de ejecución al script de entrada y corregir finales de línea (CRLF a LF)
 COPY entrypoint.sh .
 RUN sed -i 's/\r$//g' /app/entrypoint.sh
 RUN chmod +x entrypoint.sh
