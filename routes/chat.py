@@ -92,7 +92,7 @@ def handle_start_group_call(data):
     }
     
     # Notify everyone in the chat room that a call started
-    emit('incoming_call_notification', payload, room=notification_room)
+    emit('incoming_call', payload, room=notification_room)
 
 @socketio.on('join_video_room')
 def handle_join_video_room(data):

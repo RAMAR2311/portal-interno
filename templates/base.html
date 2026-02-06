@@ -166,23 +166,26 @@
         });
 
         // --- Video Call Notifications ---
-        window.socket.on('incoming_call_notification', function (data) {
+        window.socket.on('incoming_call', function (data) {
             // If I am the caller, ignore (should be handled by broadcast room logic but just in case)
-            if (data.caller_id == parseInt("{{ current_user.id }}")) return;
+            {% if current_user.is_authenticated %}
+            if (data.caller_id == {{ current_user.id }
+        }) return;
+        {% endif %}
 
-            // Show Modal
-            const modalEl = document.getElementById('incomingCallModal');
-            document.getElementById('callCallerName').innerText = data.caller_name;
-            const acceptBtn = document.getElementById('btnAcceptCall');
+        // Show Modal
+        const modalEl = document.getElementById('incomingCallModal');
+        document.getElementById('callCallerName').innerText = data.caller_name;
+        const acceptBtn = document.getElementById('btnAcceptCall');
 
-            // Set Accept Button Link
-            acceptBtn.href = `/chat/video_room/${data.room_id}`;
+        // Set Accept Button Link
+        acceptBtn.href = `/chat/video_room/${data.room_id}`;
 
-            const modal = new bootstrap.Modal(modalEl);
-            modal.show();
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
 
-            // Play Ringtone (Looping sound logic or repeated notify)
-            playRingtone();
+        // Play Ringtone (Looping sound logic or repeated notify)
+        playRingtone();
         });
 
         // Ringtone Logic
