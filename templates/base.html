@@ -1,11 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CHAT MC</title>
-    <!-- Favicon -->
     <!-- Favicon -->
     <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='img/favicon.jpg') }}">
     <!-- Google Fonts: Poppins -->
@@ -22,7 +21,7 @@
     <!-- Custom Calendar Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/calendar_custom.css') }}">
 
-    <!-- Tippy.js (via CDN) -->
+    <!-- Tippy.js -->
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script src="https://unpkg.com/tippy.js@6"></script>
     <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/scale.css" />
@@ -126,7 +125,7 @@
         </div>
     </div>
 
-    <!-- Toast Container for Notifications -->
+    <!-- Toast Container -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
         <div id="liveToast" class="toast align-items-center text-dark bg-warning border-0" role="alert"
             aria-live="assertive" aria-atomic="true">
@@ -135,22 +134,17 @@
                     <strong id="toast-sender" class="d-block mb-1">Sender</strong>
                     <span id="toast-body">Message content...</span>
                 </div>
-                <!-- btn-close-white removed for dark text -->
                 <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"
-        integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA=="
-        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
-        // Initialize global socket
         window.socket = io();
 
         window.socket.on('new_message', function (msg) {
-            // ... existing new_message logic ...
             if (!msg.is_me) {
                 const badge = document.getElementById('unread-badge');
                 if (badge) {
@@ -158,7 +152,6 @@
                     badge.innerText = count + 1;
                     badge.classList.remove('d-none');
                 }
-
                 if (!window.location.pathname.includes('/chat')) {
                     showToastNotification(msg);
                 }
@@ -167,208 +160,104 @@
 
         // --- Video Call Notifications ---
         window.socket.on('incoming_call', function (data) {
-            // If I am the caller, ignore (should be handled by broadcast room logic but just in case)
+            // Si soy el que llama, ignoro la notificación
             {% if current_user.is_authenticated %}
             if (data.caller_id == {{ current_user.id }
-        }) return;
+        }) {
+            return;
+        }
         {% endif %}
 
-        // Show Modal
         const modalEl = document.getElementById('incomingCallModal');
         document.getElementById('callCallerName').innerText = data.caller_name;
-        const acceptBtn = document.getElementById('btnAcceptCall');
-
-        // Set Accept Button Link
-        acceptBtn.href = `/chat/video_room/${data.room_id}`;
+        document.getElementById('btnAcceptCall').href = `{{ url_for('chat.video_room', room_id='') }}${data.room_id}`;
 
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
-
-        // Play Ringtone (Looping sound logic or repeated notify)
         playRingtone();
         });
 
-        // Ringtone Logic
         let ringInterval;
         function playRingtone() {
-            // Play simple sound loop
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (AudioContext) {
                 const ctx = new AudioContext();
-
-                // Function to play one beep
                 const beep = () => {
                     const osc = ctx.createOscillator();
                     const gain = ctx.createGain();
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(440, ctx.currentTime); // A4
-                    osc.frequency.linearRampToValueAtTime(880, ctx.currentTime + 0.1);
-
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(440, ctx.currentTime);
                     gain.gain.setValueAtTime(0.1, ctx.currentTime);
                     gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.0);
-
-                    osc.start();
-                    osc.stop(ctx.currentTime + 1.0);
+                    osc.start(); osc.stop(ctx.currentTime + 1.0);
                 };
-
                 beep();
-                ringInterval = setInterval(beep, 2000); // Repeat every 2s
-
-                // Stop ring on modal close
-                const modalEl = document.getElementById('incomingCallModal');
-                modalEl.addEventListener('hidden.bs.modal', () => {
+                ringInterval = setInterval(beep, 2000);
+                document.getElementById('incomingCallModal').addEventListener('hidden.bs.modal', () => {
                     clearInterval(ringInterval);
                 }, { once: true });
             }
         }
 
         function showToastNotification(msg) {
-            const toastEl = document.getElementById('liveToast');
-            const toastSender = document.getElementById('toast-sender');
-            const toastBody = document.getElementById('toast-body');
-
-            if (toastEl && toastSender && toastBody) {
-                toastSender.innerText = msg.sender_name || 'Nuevo Mensaje';
-
-                // Truncate and format message
-                let content = msg.content || (msg.filename ? '📎 Archivo adjunto' : 'Nuevo mensaje');
-                if (content.length > 50) {
-                    content = content.substring(0, 50) + '...';
-                }
-                toastBody.innerText = content;
-
-                // Show toast
-                const toast = new bootstrap.Toast(toastEl);
-                toast.show();
-
-                // Play sound
-                playNotificationSound();
-            }
+            showToast(msg.content || 'Nuevo mensaje', msg.sender_name || 'Chat');
         }
 
-        // Simple debounce to ensure sound doesn't glitch if multiple messages arrive instantly
-        let lastSoundTime = 0;
-        function playNotificationSound() {
-            const now = Date.now();
-            if (now - lastSoundTime < 500) return; // Minimum 500ms between sounds
-            lastSoundTime = now;
-
-            // Use AudioContext for a simple "ding" without external files
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (AudioContext) {
-                try {
-                    const ctx = new AudioContext();
-                    const oscillator = ctx.createOscillator();
-                    const gainNode = ctx.createGain();
-
-                    oscillator.connect(gainNode);
-                    gainNode.connect(ctx.destination);
-
-                    // Pleasant "Ding" sound
-                    oscillator.type = 'sine';
-                    oscillator.frequency.setValueAtTime(800, ctx.currentTime);
-                    oscillator.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.3);
-
-                    gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-
-                    oscillator.start();
-                    oscillator.stop(ctx.currentTime + 0.3);
-                } catch (e) {
-                    console.error("Audio playback failed", e);
-                }
-            }
-        }
-
-        // --- Dark Mode Logic ---
         const toggleBtn = document.getElementById('darkModeToggle');
         const icon = toggleBtn.querySelector('i');
         const body = document.body;
 
-        // Load preference
         if (localStorage.getItem('darkMode') === 'enabled') {
             enableDarkMode();
         }
 
         toggleBtn.addEventListener('click', () => {
-            if (body.classList.contains('dark-mode')) {
-                disableDarkMode();
-            } else {
-                enableDarkMode();
-            }
+            if (body.classList.contains('dark-mode')) disableDarkMode();
+            else enableDarkMode();
         });
 
         function enableDarkMode() {
             body.classList.add('dark-mode');
-            icon.classList.remove('fa-moon');
-            icon.classList.add('fa-sun');
+            icon.classList.replace('fa-moon', 'fa-sun');
             localStorage.setItem('darkMode', 'enabled');
         }
 
         function disableDarkMode() {
             body.classList.remove('dark-mode');
-            icon.classList.remove('fa-sun');
-            icon.classList.add('fa-moon');
-            localStorage.setItem('darkMode', 'null');
+            icon.classList.replace('fa-sun', 'fa-moon');
+            localStorage.setItem('darkMode', 'disabled');
         }
 
-        // --- Flash Messages as Toasts ---
         const flashDiv = document.getElementById('flash-messages-data');
         if (flashDiv) {
             const messages = JSON.parse(flashDiv.dataset.messages);
             messages.forEach(([category, msg]) => {
-                // Map flask categories to bootstrap colors if needed
-                // 'error' -> 'danger'
-                if (category === 'error') category = 'danger';
-
-                showToast(msg, category === 'danger' ? 'Error' : 'Notificación', category);
+                showToast(msg, category === 'error' ? 'Error' : 'Notificación', category);
             });
         }
 
-        // Modified Helper to Reuse for Flash
         function showToast(message, title = 'Notificación', type = 'info') {
             const toastEl = document.getElementById('liveToast');
-            const toastSender = document.getElementById('toast-sender');
-            const toastBody = document.getElementById('toast-body');
+            const container = document.querySelector('.toast-container');
+            const newToast = toastEl.cloneNode(true);
+            newToast.id = '';
 
-            if (toastEl && toastSender && toastBody) {
-                // Determine header color/icon based on type? 
-                // Creating a new toast instance clone would be better for multiples
-                // For now reusing the single instance, but queueing might be needed.
-                // Better: Clone the template.
+            newToast.querySelector('#toast-sender').innerText = title;
+            newToast.querySelector('#toast-body').innerText = message;
 
-                const container = document.querySelector('.toast-container');
-                const newToast = toastEl.cloneNode(true);
-                newToast.id = ''; // remove id
-
-                newToast.querySelector('#toast-sender').innerText = title;
-                newToast.querySelector('#toast-body').innerText = message;
-
-                // Color tweaks
-                if (type === 'danger') {
-                    newToast.classList.remove('bg-warning');
-                    newToast.classList.add('bg-danger', 'text-white');
-                    newToast.querySelector('.btn-close').classList.add('btn-close-white');
-                } else if (type === 'success') {
-                    newToast.classList.remove('bg-warning');
-                    newToast.classList.add('bg-success', 'text-white');
-                    newToast.querySelector('.btn-close').classList.add('btn-close-white');
-                }
-
-                container.appendChild(newToast);
-                const toast = new bootstrap.Toast(newToast);
-                toast.show();
-
-                // Remove from DOM after hide
-                newToast.addEventListener('hidden.bs.toast', () => {
-                    newToast.remove();
-                })
+            if (type === 'error' || type === 'danger') {
+                newToast.classList.replace('bg-warning', 'bg-danger');
+                newToast.classList.add('text-white');
+            } else if (type === 'success') {
+                newToast.classList.replace('bg-warning', 'bg-success');
+                newToast.classList.add('text-white');
             }
-        }
 
+            container.appendChild(newToast);
+            const toast = new bootstrap.Toast(newToast);
+            toast.show();
+            newToast.addEventListener('hidden.bs.toast', () => newToast.remove());
+        }
     </script>
     {% block scripts %}{% endblock %}
 </body>
