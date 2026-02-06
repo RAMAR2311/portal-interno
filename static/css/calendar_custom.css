@@ -1,0 +1,193 @@
+/* Glassmorphism & Premium UI for Calendar */
+
+:root {
+    --gold: #e1b107;
+    --black: #000000;
+    --pink: #e8a1a1;
+    --gray-bg: #f4f6f9;
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: 1px solid rgba(255, 255, 255, 0.3);
+    --shadow-soft: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+}
+
+/* Base Overrides */
+.card-glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: var(--glass-border);
+    box-shadow: var(--shadow-soft);
+    border-radius: 16px;
+}
+
+/* --- Sidebar Styling --- */
+.user-list {
+    max-height: 600px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.user-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+    background: white;
+    margin-bottom: 0.75rem;
+}
+
+.user-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.user-card.active {
+    border-color: var(--gold);
+    background-color: #fff9e6;
+    /* light gold tint */
+}
+
+.user-card .avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    font-size: 0.9rem;
+}
+
+/* --- FullCalendar Customization --- */
+.fc .fc-toolbar-title {
+    font-family: 'Outfit', sans-serif;
+    /* Assuming premium font available */
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #333;
+}
+
+/* Event Styling */
+.fc-event-custom {
+    padding: 2px 4px;
+    border-radius: 4px;
+    border: none;
+    border-left: 4px solid;
+    /* Dynamic color */
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+    color: #333;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+.fc-event-custom:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    z-index: 5;
+}
+
+.fc-event-custom .fc-event-icon {
+    margin-right: 6px;
+    opacity: 0.8;
+}
+
+.fc-event-custom .fc-event-title {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* FullCalendar Header aesthetics */
+.fc-col-header-cell {
+    background: linear-gradient(to bottom, #f8f9fa, #fff);
+    padding: 10px 0;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    color: #666;
+}
+
+.fc-timegrid-slot {
+    height: 3em !important;
+    /* Taller slots for breathing room */
+}
+
+/* --- Modal Redesign --- */
+.modal-premium .modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+}
+
+.modal-premium .modal-header {
+    background: linear-gradient(135deg, #000000 0%, #333333 100%);
+    color: var(--gold);
+    border-bottom: none;
+    padding: 1.5rem 2rem;
+    border-radius: 16px 16px 0 0;
+}
+
+.modal-premium .btn-close {
+    filter: invert(1);
+    opacity: 0.8;
+}
+
+.modal-premium .form-floating>.form-control {
+    border: 1px solid #eee;
+    background: #fdfdfd;
+}
+
+.modal-premium .form-floating>.form-control:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 0.2rem rgba(225, 177, 7, 0.15);
+}
+
+/* --- Dark Mode Support --- */
+body.dark-mode .card-glass {
+    background: rgba(30, 30, 30, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .user-card {
+    background: #2c2c2c;
+    color: #e0e0e0;
+}
+
+body.dark-mode .user-card.active {
+    background: #333;
+    border-color: var(--gold);
+}
+
+body.dark-mode .fc-toolbar-title {
+    color: #e0e0e0;
+}
+
+body.dark-mode .fc-col-header-cell {
+    background: #2c2c2c;
+    color: #a0a0a0;
+}
+
+body.dark-mode .fc-event-custom {
+    background: #333;
+    color: #fff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .modal-premium .modal-content {
+    background: #1e1e1e;
+}
+
+body.dark-mode .modal-premium .form-floating>.form-control {
+    background: #2c2c2c;
+    color: white;
+    border-color: #444;
+}
+
+body.dark-mode .modal-premium .form-floating>label {
+    color: #a0a0a0;
+}

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            text-decoration: underline;
+            margin-bottom: 30px;
+        }
+
+        .content {
+            font-size: 14px;
+            line-height: 1.6;
+            text-align: justify;
+        }
+
+        .signature {
+            margin-top: 100px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>EMPRESA S.A.S</h1>
+        <p>NIT: 900.000.000-1</p>
+    </div>
+
+    <div class="title" style="text-align: center;">CERTIFICADO LABORAL</div>
+
+    <div class="content">
+        <p>A quien interese,</p>
+        <br>
+        <p>Hacemos constar que el señor(a) <strong>{{ nombre }}</strong>, identificado(a) en nuestros registros, labora
+            en nuestra compañía desempeñando el cargo de <strong>{{ cargo }}</strong>.</p>
+
+        <p>El trabajador inició sus labores el día <strong>{{ fecha_ingreso }}</strong>, mediante un contrato de tipo
+            <strong>{{ tipo_contrato }}</strong>.</p>
+
+        <p>Actualmente devenga un salario mensual de <strong>{{ salario }}</strong>.</p>
+
+        <br>
+        <p>Esta certificación se expide a solicitud del interesado.</p>
+    </div>
+
+    <div class="signature">
+        <p>__________________________</p>
+        <p>Recursos Humanos</p>
+        <p>EMPRESA S.A.S</p>
+    </div>
+</body>
+
+</html>

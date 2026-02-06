@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2 class="mb-4">Control de Tiempos y Asistencia</h2>
+
+<div class="row">
+    <!-- TABLA DE ESTADO ACTUAL -->
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-users-cog"></i> Estado Actual de Empleados
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Empleado</th>
+                            <th>Cargo</th>
+                            <th>Estado Actual</th>
+                            <th>Deuda Quincenal</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emp in employees %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    {% if emp.foto_perfil %}
+                                    <img src="{{ url_for('static', filename='uploads/profile_pics/' + emp.foto_perfil) }}"
+                                        class="rounded-circle me-2"
+                                        style="width: 30px; height: 30px; object-fit: cover;">
+                                    {% else %}
+                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2"
+                                        style="width: 30px; height: 30px; font-size: 0.8em;">{{ emp.nombre[0] }}</div>
+                                    {% endif %}
+                                    {{ emp.nombre }}
+                                </div>
+                            </td>
+                            <td>{{ emp.cargo }}</td>
+                            <td>
+                                {% if emp.current_status == 'Activo' %}
+                                <span class="badge bg-success">Activo</span>
+                                {% elif emp.current_status == 'En Break' %}
+                                <span class="badge bg-warning text-dark">En Break</span>
+                                {% elif emp.current_status == 'En Almuerzo' %}
+                                <span class="badge bg-warning text-dark">En Almuerzo</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="text-danger fw-bold">{{ emp.debt_str }}</span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('admin.time_history', user_id=emp.id) }}"
+                                    class="btn btn-sm btn-info text-white">
+                                    <i class="fas fa-history"></i> Ver Historial
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- HISTORIAL RECIENTE -->
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <i class="fas fa-history"></i> Historial Reciente (Últimos 50)
+            </div>
+            <div class="card-body p-0" style="max-height: 500px; overflow-y: auto;">
+                <ul class="list-group list-group-flush">
+                    {% for log in logs %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ log.user.nombre }}</strong> <br>
+                            <small class="text-muted">Cambió a: {{ log.new_status }}</small>
+                        </div>
+                        <span class="badge bg-light text-dark border">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                            }}</span>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-center text-muted">No hay registros recientes.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Auto-refresh page every 30 seconds to update statuses
+    setTimeout(function () {
+        location.reload();
+    }, 30000);
+</script>
+{% endblock %}

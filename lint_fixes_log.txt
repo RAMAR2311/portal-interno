@@ -1,0 +1,7 @@
+Corregidos los errores de sintaxis reportados por el IDE en `templates/chat/index.html`.
+
+**Detalles de la corrección:**
+- **HTML:** Se actualizó el botón de borrar grupo para usar `data-group-id="{{ group.id }}"` y `onclick="deleteGroup(this, event)"`. Esto elimina la inyección de Jinja directamente en la llamada a la función, que confundía al linter.
+- **JavaScript:** Se actualizó la función `deleteGroup` para recibir el elemento HTML como primer argumento y extraer el `groupId` de sus atributos de datos (`dataset.groupId`).
+
+El código ahora es más limpio y cumple con las reglas del linter.

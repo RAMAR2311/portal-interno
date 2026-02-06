@@ -1,0 +1,29 @@
+# --- Bases de Datos Locales (Nunca subir) ---
+*.db
+*.sqlite3
+instance/
+PORTAL_INTERNO/instance/
+
+# --- Archivos de Entorno y Secretos (Nunca subir) ---
+.env
+.env.local
+.flaskenv
+
+# --- Archivos temporales de Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Entorno Virtual ---
+venv/
+env/
+.venv/
+
+# --- Archivos de Sistema Operativo ---
+.DS_Store
+Thumbs.db
+
+# --- Migraciones (OJO: Estas SÍ se suben, excepto si quieres ignorarlas) ---
+# migrations/
+# (Dejamos migrations descomentado porque SÍ debes subir las versiones de migración)

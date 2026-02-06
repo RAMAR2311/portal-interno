@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Publicar Nuevo Comunicado</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="titulo" class="form-label">Título del Comunicado</label>
+                        <input type="text" class="form-control" id="titulo" name="titulo" required placeholder="Ej: Anuncio Importante sobre Vacaciones">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="contenido" class="form-label">Mensaje / Contenido</label>
+                        <textarea class="form-control" id="contenido" name="contenido" rows="6" required placeholder="Escribe aquí el detalle del anuncio..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="archivo" class="form-label">Archivo PDF Adjunto (Opcional)</label>
+                        <input type="file" class="form-control" id="archivo" name="archivo" accept="application/pdf">
+                        <div class="form-text">Solo se permiten archivos en formato PDF.</div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-send-fill"></i> Publicar Comunicado
+                        </button>
+                        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

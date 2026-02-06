@@ -1,0 +1,861 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row chat-container" style="height: 80vh;">
+    <!-- Sidebar -->
+    <div class="col-md-3 border-end d-flex flex-column h-100">
+        <div class="d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
+            <h5 class="mb-0">Chats</h5>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createGroupModal"
+                title="Crear Grupo">
+                <i class="fas fa-users-cog"></i>
+            </button>
+        </div>
+
+        <div class="flex-grow-1 overflow-auto">
+            <!-- Groups Section -->
+            <div class="p-2">
+                <small class="text-uppercase text-muted fw-bold ms-2" style="font-size: 0.75rem;">Mis Grupos</small>
+                <div class="list-group list-group-flush mt-1" id="group-list">
+                    {% for group in groups %}
+                    <a href="#" class="list-group-item list-group-item-action chat-select rounded mb-1 border-0"
+                        data-type="group" data-id="{{ group.id }}" data-name="{{ group.name }}">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
+                                style="width: 32px; height: 32px;">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="flex-grow-1 text-truncate">
+                                <h6 class="mb-0">{{ group.name }}</h6>
+                            </div>
+                            {% if current_user.id == group.created_by or current_user.rol == 'Admin' %}
+                            <button class="btn btn-link btn-sm text-danger p-0 ms-2" onclick="deleteGroup(this, event)"
+                                data-group-id="{{ group.id }}" title="Eliminar Grupo">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Direct Messages Section -->
+            <div class="p-2">
+                <small class="text-uppercase text-muted fw-bold ms-2" style="font-size: 0.75rem;">Mensajes
+                    Directos</small>
+                <div class="list-group list-group-flush mt-1">
+                    {% for user in users %}
+                    <a href="#" class="list-group-item list-group-item-action chat-select rounded mb-1 border-0"
+                        data-type="user" data-id="{{ user.id }}" data-name="{{ user.nombre }}">
+                        <div class="d-flex align-items-center">
+                            <div class="position-relative me-2">
+                                <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center"
+                                    style="width: 32px; height: 32px;">
+                                    {{ user.nombre[0] }}
+                                </div>
+                                <span
+                                    class="position-absolute bottom-0 end-0 p-1 rounded-circle border border-white {{ 'bg-success' if user.id in online_users else 'bg-secondary' }}"
+                                    id="status-dot-{{ user.id }}" style="width: 10px; height: 10px;"></span>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">{{ user.nombre }}</h6>
+                                <small class="text-muted" style="font-size: 0.8em;">{{ user.cargo }}</small>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="col-md-9 d-flex flex-column h-100">
+        <div class="bg-white p-3 border-bottom d-flex align-items-center" id="chat-header">
+            <div class="d-flex align-items-center">
+                <div id="chat-avatar" class="me-3"></div>
+                <div>
+                    <h5 class="mb-0" id="chat-title">Selecciona un chat</h5>
+                    <small class="text-muted" id="chat-status"></small>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-messages flex-grow-1 p-4 bg-light overflow-auto" id="chat-box">
+            <div class="d-flex h-100 align-items-center justify-content-center text-muted">
+                <div class="text-center">
+                    <i class="fas fa-comments fa-3x mb-3"></i>
+                    <p>Selecciona un usuario o grupo para comenzar a chatear</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-3 bg-white border-top">
+            <form id="chat-form" class="d-flex gap-2 align-items-center">
+                <input type="hidden" id="recipient_id" name="recipient_id">
+                <input type="hidden" id="group_id" name="group_id">
+
+                <input type="file" id="file-input" name="file" class="d-none">
+                <button type="button" class="btn btn-light text-secondary border"
+                    onclick="document.getElementById('file-input').click()" title="Adjuntar archivo">
+                    <i class="fas fa-paperclip"></i>
+                </button>
+
+                <button type="button" class="btn btn-light text-warning border" id="emoji-btn" title="Insertar emoji"
+                    disabled>
+                    <i class="far fa-smile"></i>
+                </button>
+
+                <input type="text" id="message-input" name="content" class="form-control"
+                    placeholder="Escribe un mensaje..." autocomplete="off" disabled>
+
+                <button type="submit" class="btn btn-primary" id="send-btn" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+            <div id="file-name" class="text-muted small mt-1 ms-5"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Group Modal -->
+<div class="modal fade" id="createGroupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Crear Nuevo Grupo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="create-group-form">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre del Grupo</label>
+                        <input type="text" class="form-control" id="group-name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Seleccionar Miembros</label>
+                        <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                            {% for user in users %}
+                            <div class="form-check">
+                                <input class="form-check-input group-member-check" type="checkbox" value="{{ user.id }}"
+                                    id="user_{{ user.id }}">
+                                <label class="form-check-label" for="user_{{ user.id }}">
+                                    {{ user.nombre }} <small class="text-muted">({{ user.cargo }})</small>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="submitCreateGroup()">Crear Grupo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<!-- Video Call Modal -->
+<div class="modal fade" id="videoCallModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">Videollamada</h5>
+            </div>
+            <div class="modal-body text-center p-0 position-relative" style="height: 500px; background: #000;">
+
+                <!-- Remote Video (Full Size) -->
+                <video id="remote-video" autoplay playsinline class="w-100 h-100" style="object-fit: cover;"></video>
+
+                <!-- Local Video (PIP) -->
+                <video id="local-video" autoplay playsinline muted
+                    class="position-absolute bottom-0 end-0 m-3 border border-white"
+                    style="width: 150px; height: 110px; object-fit: cover; border-radius: 8px; z-index: 10;">
+                </video>
+
+                <!-- Status Overlay -->
+                <div id="video-status" class="position-absolute top-50 start-50 translate-middle">
+                    <div class="spinner-border text-light mb-2" role="status"></div>
+                    <div id="video-status-text">Conectando...</div>
+                </div>
+
+                <!-- Incoming Call Overlay -->
+                <div id="incoming-call-overlay"
+                    class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center bg-dark"
+                    style="z-index: 20;">
+                    <div class="mb-4">
+                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
+                            style="width: 80px; height: 80px;">
+                            <i class="fas fa-video fa-2x"></i>
+                        </div>
+                        <h4 id="caller-name">Usuario</h4>
+                        <p class="text-muted">te está llamando...</p>
+                    </div>
+                    <div class="d-flex gap-4">
+                        <button class="btn btn-danger rounded-circle p-3" onclick="rejectCall()">
+                            <i class="fas fa-phone-slash"></i>
+                        </button>
+                        <button class="btn btn-success rounded-circle p-3" onclick="acceptCall()">
+                            <i class="fas fa-video"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-danger rounded-pill px-4" onclick="endCall()">
+                    <i class="fas fa-phone-slash me-2"></i> Finalizar Llamada
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { EmojiButton } from 'https://cdn.skypack.dev/@joeattardi/emoji-button@4.6.4';
+
+    const socket = window.socket;
+    let currentChatType = null; // 'user' or 'group'
+    let currentChatId = null;
+    let picker = null; // Global picker instance
+
+    // --- PeerJS & Video Logic ---
+    let myPeerId = null;
+    let peer = null;
+    let currentCall = null;
+    let localStream = null;
+    let incomingCallData = null;
+    let videoModalInstance = null;
+
+    // Initialize Peer
+    try {
+        peer = new Peer(undefined, {
+            debug: 2
+        });
+
+        peer.on('open', (id) => {
+            console.log('My Peer ID is: ' + id);
+            myPeerId = id;
+        });
+
+        peer.on('call', (call) => {
+            console.log('Receiving PeerJS call from:', call.peer);
+
+            if (currentCall) {
+                console.log('Already in a call, rejecting new one');
+                call.close();
+                return;
+            }
+
+            if (localStream) {
+                call.answer(localStream);
+                handleCallStream(call);
+            } else {
+                console.warn('Received PeerJS call but localStream not ready.');
+            }
+        });
+
+    } catch (e) {
+        console.error('PeerJS init failed', e);
+    }
+
+    window.startVideoCall = function () {
+        if (!currentChatId || currentChatType !== 'user') {
+            console.error('Cant start call: no user selected');
+            return;
+        }
+
+        console.log('Initiating call to user:', currentChatId);
+
+        const modalEl = document.getElementById('videoCallModal');
+        videoModalInstance = new bootstrap.Modal(modalEl);
+        videoModalInstance.show();
+
+        document.getElementById('video-status').classList.remove('d-none');
+        document.getElementById('video-status-text').innerText = "Iniciando cámara...";
+        document.getElementById('incoming-call-overlay').classList.add('d-none');
+        document.getElementById('remote-video').srcObject = null;
+
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then((stream) => {
+                console.log('Local stream acquired');
+                localStream = stream;
+                const localVideo = document.getElementById('local-video');
+                localVideo.srcObject = stream;
+                localVideo.play().catch(e => console.warn('Local video play failed:', e));
+
+                document.getElementById('video-status-text').innerText = "Llamando...";
+
+                socket.emit('initiate_call', {
+                    recipient_id: currentChatId,
+                    peer_id: myPeerId
+                });
+            })
+            .catch((err) => {
+                console.error('Failed to get local stream', err);
+                alert('No se pudo acceder a la cámara o micrófono. Por favor, revisa los permisos.');
+                videoModalInstance.hide();
+            });
+    };
+
+    window.acceptCall = function () {
+        console.log('Accepting incoming call...');
+        document.getElementById('incoming-call-overlay').classList.add('d-none');
+        document.getElementById('video-status').classList.remove('d-none');
+        document.getElementById('video-status-text').innerText = "Conectando...";
+
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then((stream) => {
+                console.log('Receiver local stream acquired');
+                localStream = stream;
+                const localVideo = document.getElementById('local-video');
+                localVideo.srcObject = stream;
+                localVideo.play().catch(e => console.warn('Local video play failed:', e));
+
+                if (incomingCallData && incomingCallData.peer_id) {
+                    console.log('Calling back Peer ID:', incomingCallData.peer_id);
+                    const call = peer.call(incomingCallData.peer_id, stream);
+                    handleCallStream(call);
+                } else {
+                    console.error('Incoming call data missing peer_id');
+                    endCall();
+                }
+            })
+            .catch((err) => {
+                console.error('Receiver media error:', err);
+                alert('Error al acceder a los dispositivos de audio/video.');
+                endCall();
+            });
+    };
+
+    window.rejectCall = function () {
+        console.log('Call rejected by user');
+        endCall();
+    };
+
+    window.endCall = function () {
+        console.log('Ending call...');
+        if (currentCall) {
+            currentCall.close();
+        }
+        if (localStream) {
+            localStream.getTracks().forEach(track => {
+                track.stop();
+                console.log('Track stopped:', track.kind);
+            });
+        }
+
+        const targetId = currentChatId || (incomingCallData ? incomingCallData.sender_id : null);
+        if (targetId) {
+            console.log('Notifying other end (', targetId, ') that call ended');
+            socket.emit('end_call', { recipient_id: targetId });
+        }
+
+        const modalEl = document.getElementById('videoCallModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) {
+            modal.hide();
+        }
+
+        document.getElementById('remote-video').srcObject = null;
+        document.getElementById('local-video').srcObject = null;
+
+        currentCall = null;
+        localStream = null;
+        incomingCallData = null;
+        videoModalInstance = null;
+    };
+
+    function handleCallStream(call) {
+        currentCall = call;
+
+        call.on('stream', (remoteStream) => {
+            console.log('Remote stream received');
+            document.getElementById('video-status').classList.add('d-none');
+            const remoteVideo = document.getElementById('remote-video');
+            remoteVideo.srcObject = remoteStream;
+            remoteVideo.play().catch(e => console.warn('Remote video play failed:', e));
+        });
+
+        call.on('close', () => {
+            console.log('PeerJS call closed event');
+            endCall();
+        });
+
+        call.on('error', (err) => {
+            console.error('PeerJS call error:', err);
+            endCall();
+        });
+    }
+
+    // --- Socket Listeners for Video ---
+    socket.on('incoming_call', (data) => {
+        console.log('Socket: incoming_call from', data.sender_name, 'PeerID:', data.peer_id);
+        incomingCallData = data;
+
+        const modalEl = document.getElementById('videoCallModal');
+        videoModalInstance = new bootstrap.Modal(modalEl);
+        videoModalInstance.show();
+
+        document.getElementById('incoming-call-overlay').classList.remove('d-none');
+        document.getElementById('incoming-call-overlay').classList.add('d-flex');
+        document.getElementById('video-status').classList.add('d-none');
+        document.getElementById('caller-name').innerText = data.sender_name;
+        document.getElementById('remote-video').srcObject = null;
+        document.getElementById('local-video').srcObject = null;
+    });
+
+    socket.on('call_ended', () => {
+        console.log('Socket: call_ended received');
+        endCall();
+    });
+
+
+    // Initialize Picker immediately
+    try {
+        picker = new EmojiButton({
+            position: 'top-start',
+            theme: 'auto',
+            autoHide: false,
+            showSearch: true,
+            zIndex: 9999
+        });
+        console.log('Emoji Picker inicializado correctamente');
+
+        const input = document.querySelector('#message-input');
+
+        // Setup event listener for selection
+        picker.on('emoji', selection => {
+            console.log('Emoji seleccionado:', selection.emoji);
+
+            if (input) {
+                const start = input.selectionStart || 0;
+                const end = input.selectionEnd || 0;
+                const text = input.value;
+
+                input.value = text.substring(0, start) + selection.emoji + text.substring(end);
+
+                const newPos = start + selection.emoji.length;
+                input.focus();
+                input.setSelectionRange(newPos, newPos);
+            }
+        });
+
+    } catch (error) {
+        console.error('Error fatal al inicializar EmojiButton:', error);
+    }
+
+    // Attach click event via delegation or direct check
+    // We do this outside DOMContentLoaded to ensure module script order
+    const trigger = document.querySelector('#emoji-btn');
+    if (trigger) {
+        trigger.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('Click en emoji button');
+            if (picker) {
+                picker.togglePicker(trigger);
+            } else {
+                console.error('El picker no esta inicializado');
+            }
+        });
+    }
+
+    // Chat Selection Logic
+    document.querySelectorAll('.chat-select').forEach(item => {
+        item.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            // UI Active State
+            document.querySelectorAll('.chat-select').forEach(i => i.classList.remove('active', 'bg-light'));
+            this.classList.add('active');
+
+            // Get Data
+            currentChatType = this.dataset.type;
+            currentChatId = this.dataset.id;
+            const name = this.dataset.name;
+
+            // Update Header
+            const titleEl = document.getElementById('chat-title');
+            titleEl.textContent = name;
+
+            // Add Video Button if not present
+            let headerActions = document.getElementById('chat-header-actions');
+            if (!headerActions) {
+                // Create container for actions if needed, or just append to header
+                // The header structure is: div.d-flex.align-items-center #chat-header -> div.d-flex
+                // We can append the button to the main flex container
+            }
+
+            // HACK: Dynamically inject Video Button if it's a USER chat
+            let videoBtn = document.getElementById('video-call-btn');
+            if (!videoBtn) {
+                // Create it
+                videoBtn = document.createElement('button');
+                videoBtn.id = 'video-call-btn';
+                videoBtn.className = 'btn btn-light text-primary border ms-auto';
+                videoBtn.innerHTML = '<i class="fas fa-video"></i>';
+                videoBtn.title = 'Videollamada';
+                videoBtn.onclick = window.startVideoCall;
+                document.getElementById('chat-header').appendChild(videoBtn);
+            }
+
+            if (currentChatType === 'user') {
+                videoBtn.classList.remove('d-none');
+            } else {
+                videoBtn.classList.add('d-none');
+            }
+
+            // Set Avatar
+            const avatarDiv = document.getElementById('chat-avatar');
+            avatarDiv.innerHTML = '';
+            if (currentChatType === 'group') {
+                avatarDiv.innerHTML = '<div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;"><i class="fas fa-users"></i></div>';
+                document.getElementById('chat-status').textContent = 'Grupo';
+                // Set hidden fields
+                document.getElementById('group_id').value = currentChatId;
+                document.getElementById('recipient_id').value = '';
+            } else {
+                avatarDiv.innerHTML = `<div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">${name.charAt(0)}</div>`;
+                document.getElementById('chat-status').textContent = 'En línea';
+                // Set hidden fields
+                document.getElementById('recipient_id').value = currentChatId;
+                document.getElementById('group_id').value = '';
+            }
+
+            // Enable Inputs - CRITICAL for emoji button
+            const msgInput = document.getElementById('message-input');
+            const sendBtn = document.getElementById('send-btn');
+            const emojiBtn = document.getElementById('emoji-btn');
+
+            msgInput.disabled = false;
+            sendBtn.disabled = false;
+            emojiBtn.disabled = false; // Enable the emoji button
+
+            msgInput.focus();
+
+            loadMessages();
+        });
+    });
+
+    // Typing Indicator Logic
+    const msgInput = document.getElementById('message-input');
+    let typingTimeout;
+
+    msgInput.addEventListener('input', () => {
+        if (!currentChatId) return;
+
+        // Emit typing event
+        socket.emit('typing', {
+            recipient_id: currentChatType === 'user' ? currentChatId : null,
+            group_id: currentChatType === 'group' ? currentChatId : null
+        });
+
+        // Clear existing timeout
+        if (typingTimeout) clearTimeout(typingTimeout);
+
+        // Emit stop_typing after 2 seconds of inactivity
+        typingTimeout = setTimeout(() => {
+            socket.emit('stop_typing', {
+                recipient_id: currentChatType === 'user' ? currentChatId : null,
+                group_id: currentChatType === 'group' ? currentChatId : null
+            });
+        }, 2000);
+    });
+
+    // File Input UI
+    document.getElementById('file-input').addEventListener('change', function () {
+        const fileName = this.files[0] ? this.files[0].name : '';
+        document.getElementById('file-name').innerHTML = fileName ? `<i class="fas fa-file-pdf"></i> ${fileName}` : '';
+    });
+
+    // Create Group Logic
+    window.submitCreateGroup = function () {
+        const name = document.getElementById('group-name').value;
+        const checkboxes = document.querySelectorAll('.group-member-check:checked');
+        const members = Array.from(checkboxes).map(cb => cb.value);
+
+        if (!name || members.length === 0) {
+            alert('Por favor ingrese un nombre y seleccione al menos un miembro.');
+            return;
+        }
+
+        fetch("{{ url_for('chat.create_group') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, members: members })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload();
+                } else {
+                    alert('Error al crear grupo: ' + data.error);
+                }
+            });
+    };
+
+    // Delete Group Logic
+    window.deleteGroup = function (element, event) {
+        event.stopPropagation(); // Prevent opening the chat
+        const groupId = element.dataset.groupId;
+
+        if (!confirm('¿Estás seguro de eliminar este grupo? Se perderán todos los mensajes.')) return;
+
+        fetch(`/chat/delete_group/${groupId}`, {
+            method: 'DELETE'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload();
+                } else {
+                    alert('Error al eliminar: ' + (data.error || 'Desconocido'));
+                }
+            })
+            .catch(err => alert('Error de red al eliminar grupo.'));
+    };
+
+    // Send Message
+    document.getElementById('chat-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        fetch("{{ url_for('chat.send_message') }}", {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('message-input').value = '';
+                    document.getElementById('file-input').value = '';
+                    document.getElementById('file-name').textContent = '';
+                }
+            });
+    });
+
+    // State for pagination
+    let currentPage = 1;
+    let isLoadingMessages = false;
+    let hasMoreMessages = true;
+
+    // Scroll Listener
+    document.getElementById('chat-box').addEventListener('scroll', function () {
+        if (this.scrollTop === 0 && hasMoreMessages && !isLoadingMessages) {
+            loadMessages(currentPage + 1);
+        }
+    });
+
+    // Load Messages & Socket Logic
+    function loadMessages(page = 1) {
+        if (!currentChatId) return;
+
+        // Reset state on new chat
+        if (page === 1) {
+            document.getElementById('chat-box').innerHTML = '';
+            currentPage = 1;
+            hasMoreMessages = true;
+        }
+
+        isLoadingMessages = true;
+
+        let url = `/chat/get_messages?page=${page}`;
+        if (currentChatType === 'group') {
+            url += `&group_id=${currentChatId}`;
+        } else {
+            url += `&recipient_id=${currentChatId}`;
+        }
+
+        const chatBox = document.getElementById('chat-box');
+        const oldHeight = chatBox.scrollHeight;
+        const oldTop = chatBox.scrollTop;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    if (page === 1) chatBox.innerHTML = `<div class="text-center text-danger mt-5">${data.error}</div>`;
+                    return;
+                }
+
+                const messages = data.messages || [];
+
+                // Update pagination state
+                hasMoreMessages = data.has_more;
+                currentPage = page;
+
+                if (page === 1 && messages.length === 0) {
+                    chatBox.innerHTML = '<div class="text-center text-muted mt-5">No hay mensajes aún. ¡Saluda!</div>';
+                } else {
+                    // Prepend or Append
+                    // Since backend returns chronological (oldest to newest), we just dump them.
+                    // BUT if page > 1, these act as "older" messages compared to what we have.
+                    // Wait, backend returns items reversed from DESC query, so they are [Oldest ... Newest] of that page.
+                    // Page 1: [Msg 80 ... Msg 100]
+                    // Page 2: [Msg 60 ... Msg 79]
+
+                    // So if page > 1, we must PREPEND these messages to the top of the container.
+
+                    if (page === 1) {
+                        messages.forEach(msg => appendMessage(msg));
+                        // Scroll to bottom
+                        chatBox.scrollTop = chatBox.scrollHeight;
+                    } else {
+                        // For older pages, we prepend them
+                        // messages is [Oldest -> Newest]. We want to render them in that order but AT THE TOP.
+                        // So we iterate and insertAdjacentHTML('afterbegin', ...) but in reverse?
+                        // No, if we insert 'afterbegin' one by one:
+                        // [A, B, C]. 
+                        // Insert A: [A]
+                        // Insert B: [B, A] -> Wrong order.
+                        // We should construct the whole HTML string and insert once, or insert in reverse order.
+
+                        // Let's reverse iteration to insert at top correctly?
+                        // We want [A, B, C] to appear at top as A then B then C.
+                        // Top of chat: [Current Top Msg]
+                        // We want: [A, B, C, Current Top Msg]
+
+                        // If we insert C first: [C, Current Top Msg]
+                        // Then B: [B, C, Current Top Msg]
+                        // Then A: [A, B, C, Current Top Msg] -> Correct.
+
+                        // So iterate messages in reverse (Newest to Oldest of that chunk)
+                        for (let i = messages.length - 1; i >= 0; i--) {
+                            appendMessage(messages[i], true); // true = prepend
+                        }
+
+                        // Restore scroll position
+                        // New Height - Old Height = Height of added content
+                        // We want to scroll down by that amount to keep the view static relative to old content
+                        const newHeight = chatBox.scrollHeight;
+                        chatBox.scrollTop = newHeight - oldHeight;
+                    }
+                }
+                isLoadingMessages = false;
+            })
+            .catch(err => {
+                console.error(err);
+                isLoadingMessages = false;
+            });
+    }
+
+    function appendMessage(msg, prepend = false) {
+        const chatBox = document.getElementById('chat-box');
+        const isMe = msg.is_me;
+
+        const isAtBottom = (chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight) < 100;
+        const directionClass = isMe ? 'message-sent' : 'message-received';
+
+        let senderInfo = '';
+        if (!isMe && currentChatType === 'group' && msg.sender_name) {
+            senderInfo = `<div class="chat-sender-name">${msg.sender_name}</div>`;
+        }
+
+        let contentHtml = `
+        <div class="d-flex w-100 mb-2 ${directionClass}">
+            <div class="message-bubble">
+                ${senderInfo}
+                ${msg.content ? `<div class="mb-1">${msg.content}</div>` : ''}
+                ${msg.filename ? `
+                    <div class="mt-2 p-2 bg-light rounded bg-opacity-25 border border-white border-opacity-25">
+                        <a href="/chat/download_chat_file/${msg.filename}" class="${isMe ? 'text-dark' : 'text-primary'} text-decoration-none d-flex align-items-center">
+                            <i class="fas fa-file-download me-2"></i> 
+                            <span class="text-truncate" style="max-width: 150px;">Adjunto</span>
+                        </a>
+                    </div>` : ''}
+                <div class="chat-timestamp">${msg.timestamp}</div>
+            </div>
+        </div>`;
+
+        if (prepend) {
+            chatBox.insertAdjacentHTML('afterbegin', contentHtml);
+        } else {
+            chatBox.insertAdjacentHTML('beforeend', contentHtml);
+            // Scroll only if user was already at bottom OR if user sent the message (and we are appending)
+            if (isAtBottom || isMe) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }
+    }
+
+    // Socket Events
+    socket.on('new_message', function (msg) {
+        let shouldShow = false;
+        if (currentChatType === 'group') {
+            if (msg.group_id == currentChatId) shouldShow = true;
+        } else if (currentChatType === 'user') {
+            if (msg.is_me && msg.recipient_id == currentChatId && !msg.group_id) shouldShow = true;
+            if (!msg.is_me && msg.sender_id == currentChatId && !msg.group_id) shouldShow = true;
+        }
+
+        if (shouldShow) {
+            appendMessage(msg);
+            // Hide typing indicator when message received
+            document.getElementById('chat-status').textContent = currentChatType === 'group' ? 'Grupo' : 'En línea';
+        }
+    });
+
+    // User Status Event
+    socket.on('user_status', function (data) {
+        const dot = document.getElementById(`status-dot-${data.user_id}`);
+        if (dot) {
+            if (data.status === 'online') {
+                dot.classList.remove('bg-secondary');
+                dot.classList.add('bg-success');
+            } else {
+                dot.classList.remove('bg-success');
+                dot.classList.add('bg-secondary');
+            }
+        }
+    });
+
+    // Typing Events
+    socket.on('typing', function (data) {
+        if (!currentChatId) return;
+
+        let showTyping = false;
+        let typingText = '';
+
+        if (currentChatType === 'group' && currentChatId == data.group_id) {
+            showTyping = true;
+            typingText = `${data.sender_name} está escribiendo...`;
+        } else if (currentChatType === 'user' && currentChatId == data.sender_id) {
+            showTyping = true;
+            typingText = 'Escribiendo...';
+        }
+
+        if (showTyping) {
+            document.getElementById('chat-status').textContent = typingText;
+            document.getElementById('chat-status').classList.add('text-primary');
+            document.getElementById('chat-status').classList.add('fw-bold');
+        }
+    });
+
+    socket.on('stop_typing', function (data) {
+        if (!currentChatId) return;
+
+        let shouldHide = false;
+
+        if (currentChatType === 'group' && currentChatId == data.group_id) {
+            shouldHide = true;
+        } else if (currentChatType === 'user' && currentChatId == data.sender_id) {
+            shouldHide = true;
+        }
+
+        if (shouldHide) {
+            const defaultText = currentChatType === 'group' ? 'Grupo' : 'En línea';
+            document.getElementById('chat-status').textContent = defaultText;
+            document.getElementById('chat-status').classList.remove('text-primary');
+            document.getElementById('chat-status').classList.remove('fw-bold');
+        }
+    });
+
+</script>
+{% endblock %}

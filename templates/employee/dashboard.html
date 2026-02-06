@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4 animate__animated animate__fadeIn">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <h2 class="mb-0 fw-bold">Panel del Empleado</h2>
+        <div class="date-display text-muted">
+            <i class="far fa-calendar-alt me-2"></i> {{ period_override if period_override else '' }}
+            <!-- Placeholder for date if needed -->
+        </div>
+    </div>
+</div>
+
+<!-- Summary Widgets -->
+<div class="row mb-4">
+    <!-- Next Payment -->
+    <div class="col-md-4 mb-3 mb-md-0">
+        <div class="card card-widget h-100">
+            <div class="card-body">
+                <div class="icon-wrapper">
+                    <i class="fas fa-money-check-alt"></i>
+                </div>
+                <h5>Próximo Pago</h5>
+                <p>{{ next_payment }}</p>
+                <small class="text-muted">Fecha estimada de corte</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Last Communication -->
+    <div class="col-md-4 mb-3 mb-md-0">
+        <div class="card card-widget h-100" style="border-left-color: var(--secondary-pink);">
+            <div class="card-body">
+                <div class="icon-wrapper">
+                    <i class="fas fa-bullhorn"></i>
+                </div>
+                <h5>Último Comunicado</h5>
+                <p class="text-truncate" title="{{ last_notif }}">{{ last_notif }}</p>
+                <a href="#noticias" class="text-decoration-none text-muted" style="font-size: 0.8rem;">Ver todos
+                    &rarr;</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hours Worked Today -->
+    <div class="col-md-4">
+        <div class="card card-widget h-100" style="border-left-color: #28a745;">
+            <div class="card-body">
+                <div class="icon-wrapper">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <h5>Horas Trabajadas Hoy</h5>
+                <p>{{ hours_worked }}</p>
+                <div class="mt-2">
+                    <span
+                        class="badge {% if user.current_status == 'Activo' %}bg-success{% elif user.current_status in ['En Break', 'En Almuerzo'] %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                        {{ user.current_status }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Control Jornada Action Bar -->
+{% if not is_admin_view %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-white border-0 shadow-sm">
+            <div class="card-body d-flex flex-wrap justify-content-between align-items-center py-3">
+                <div class="d-flex align-items-center mb-2 mb-md-0">
+                    <div class="me-3">
+                        <i class="fas fa-stopwatch text-gold fa-2x"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0">Control de Jornada</h5>
+                        <small class="text-muted">Gestiona tu estado activo</small>
+                    </div>
+                </div>
+
+                <form action="{{ url_for('employee.change_status') }}" method="POST" class="d-flex gap-2">
+                    {% if user.current_status == 'Activo' %}
+                    <button type="submit" name="status" value="En Break" class="btn btn-secondary">
+                        <i class="fas fa-coffee me-2"></i>Pause/Break
+                    </button>
+                    <button type="submit" name="status" value="En Almuerzo" class="btn btn-secondary">
+                        <i class="fas fa-utensils me-2"></i>Almuerzo
+                    </button>
+                    {% elif user.current_status in ['En Break', 'En Almuerzo'] %}
+                    <button type="submit" name="status" value="Activo" class="btn btn-success text-white">
+                        <i class="fas fa-play me-2"></i>Retomar
+                    </button>
+                    {% else %}
+                    <button type="submit" name="status" value="Activo" class="btn btn-success text-white">
+                        <i class="fas fa-play me-2"></i>Iniciar Jornada
+                    </button>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <!-- Left Column: Personal Info & Tools -->
+    <div class="col-lg-4">
+        <!-- Profile Card -->
+        <div class="card mb-4 text-center">
+            <div class="card-body">
+                {% if user.foto_perfil %}
+                <img src="{{ url_for('static', filename='uploads/profile_pics/' + user.foto_perfil) }}"
+                    class="rounded-circle img-thumbnail mb-3"
+                    style="width: 120px; height: 120px; object-fit: cover; border-color: var(--primary-gold);"
+                    alt="Foto Perfil">
+                {% else %}
+                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto mb-3"
+                    style="width: 120px; height: 120px; color: var(--primary-gold); font-size: 3em; border: 3px solid var(--primary-gold);">
+                    {{ user.nombre[0] }}
+                </div>
+                {% endif %}
+                <h5 class="card-title mb-1">{{ user.nombre }}</h5>
+                <p class="text-muted mb-3">{{ user.cargo }}</p>
+                {% if not is_admin_view %}
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('employee.download_certificate') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-file-pdf me-2"></i>Certificado Laboral
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            <ul class="list-group list-group-flush text-start small">
+                <li class="list-group-item bg-transparent border-light"><i class="fas fa-envelope text-muted me-2"></i>
+                    {{ user.email }}</li>
+                <li class="list-group-item bg-transparent border-light"><i class="fas fa-phone text-muted me-2"></i> {{
+                    user.telefono }}</li>
+                <li class="list-group-item bg-transparent border-light"><i
+                        class="fas fa-map-marker-alt text-muted me-2"></i> {{ user.direccion }}</li>
+            </ul>
+        </div>
+
+        <!-- Info Tabs -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="myTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active text-dark" id="social-tab" data-bs-toggle="tab"
+                            data-bs-target="#social" type="button" role="tab" aria-controls="social"
+                            aria-selected="true" style="font-size: 0.8rem;">Seguridad Social</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link text-dark" id="bank-tab" data-bs-toggle="tab" data-bs-target="#bank"
+                            type="button" role="tab" aria-controls="bank" aria-selected="false"
+                            style="font-size: 0.8rem;">Bancaria</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" id="social" role="tabpanel" aria-labelledby="social-tab">
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2"><strong>EPS:</strong> <span class="float-end text-muted">{{
+                                    user.eps }}</span></li>
+                            <li class="mb-2"><strong>ARL:</strong> <span class="float-end text-muted">{{
+                                    user.arl }}</span></li>
+                            <li class="mb-2"><strong>Caja:</strong> <span class="float-end text-muted">{{
+                                    user.caja_compensacion }}</span></li>
+                            <li class="mb-2"><strong>Pensiones:</strong> <span class="float-end text-muted">{{
+                                    user.fondo_pensiones }}</span></li>
+                        </ul>
+                    </div>
+                    <div class="tab-pane fade" id="bank" role="tabpanel" aria-labelledby="bank-tab">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-university fa-2x text-gold me-3"></i>
+                            <div>
+                                <h6 class="mb-0">{{ user.entidad_bancaria }}</h6>
+                                <small class="text-muted">Cuenta Principal</small>
+                            </div>
+                        </div>
+                        <div class="p-2 bg-light rounded text-center">
+                            <code class="text-dark fs-6">{{ user.numero_cuenta }}</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: News & Payroll -->
+    <div class="col-lg-8">
+
+        <!-- Company News -->
+        <div class="card mb-4" id="noticias">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="text-uppercase small fw-bold text-gold"><i class="fas fa-newspaper me-2"></i> Noticias
+                    Recientes</span>
+            </div>
+            <div class="card-body p-0">
+                {% if comunicados %}
+                <div class="list-group list-group-flush">
+                    {% for comunicado in comunicados[:3] %}
+                    <div class="list-group-item border-light p-3">
+                        <div class="d-flex w-100 justify-content-between mb-1">
+                            <h6 class="mb-1 fw-bold text-dark">{{ comunicado.titulo }}</h6>
+                            <small class="text-muted">{{ comunicado.fecha_publicacion.strftime('%d %b')
+                                }}</small>
+                        </div>
+                        <p class="mb-1 text-muted small">{{ comunicado.contenido }}</p>
+                        {% if comunicado.archivo %}
+                        <a href="{{ url_for('employee.download_comunicado', comunicado_id=comunicado.id) }}"
+                            class="btn btn-sm btn-link text-gold p-0 text-decoration-none">
+                            <i class="fas fa-paperclip"></i> Ver adjunto
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center p-4 text-muted">
+                    <i class="far fa-newspaper fa-2x mb-2 opacity-50"></i>
+                    <p class="mb-0">No hay noticias recientes.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Payroll Table -->
+        <div class="card">
+            <div class="card-header bg-white">
+                <span class="text-uppercase small fw-bold text-dark"><i
+                        class="fas fa-file-invoice-dollar me-2 text-gold"></i> Desprendibles de
+                    Nómina</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4">Periodo</th>
+                                <th>Fecha</th>
+                                <th class="text-end pe-4">Descargar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if payrolls %}
+                            {% for doc in payrolls %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="icon-square bg-light text-dark rounded-circle me-3 d-flex align-items-center justify-content-center"
+                                            style="width: 35px; height: 35px;">
+                                            <span class="fw-bold" style="font-size: 0.7em;">{{
+                                                doc.mes[:3] | upper
+                                                }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="d-block fw-medium">{{ doc.mes }} {{ doc.anio
+                                                }}</span>
+                                            <span class="small text-muted">{{ doc.periodo }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-muted small">{{ doc.created_at.strftime('%d/%m/%Y') }}
+                                </td>
+                                <td class="text-end pe-4">
+                                    <a href="{{ url_for('employee.download_payroll', doc_id=doc.id) }}"
+                                        class="btn btn-outline-primary btn-sm rounded-pill btn-icon-only">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center py-4 text-muted">
+                                    No tienes desprendibles disponibles.
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

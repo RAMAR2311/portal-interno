@@ -1,0 +1,5 @@
+He corregido el error y preparado la base de datos.
+1.  **Duplicate Blueprint**: Encontré y eliminé una línea duplicada en `app.py` que registraba `chat_bp` dos veces. Esto causaba el error al iniciar.
+2.  **Base de Datos**: He creado la tabla `training` necesaria para el nuevo módulo de capacitaciones.
+
+Por favor, intenta ejecutar `python app.py` nuevamente. Debería iniciar correctamente ahora.

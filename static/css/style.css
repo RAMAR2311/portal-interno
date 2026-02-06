@@ -1,0 +1,483 @@
+/* 
+   CHAT MC - Premium Identity
+   Palette: Gold (#e1b107), Black (#000000), Pink (#e8a1a1), Gray (#f4f6f9), White (#ffffff)
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --primary-gold: #e1b107;
+    --secondary-pink: #e8a1a1;
+    --bg-gray: #f4f6f9;
+    /* Slightly lighter gray for admin feel */
+    --surface-white: #ffffff;
+    --structure-black: #000000;
+    --text-dark: #2c3e50;
+    --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.05);
+    /* Softer, more spread out shadow */
+    --shadow-hover: 0 15px 35px rgba(0, 0, 0, 0.1);
+    --transition-fast: all 0.3s ease;
+}
+
+body {
+    background-color: var(--bg-gray);
+    font-family: 'Poppins', sans-serif;
+    color: var(--text-dark);
+}
+
+/* --- Navigation --- */
+.navbar {
+    background-color: var(--structure-black) !important;
+    padding: 1rem 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    color: var(--primary-gold) !important;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.8) !important;
+    transition: var(--transition-fast);
+}
+
+.navbar-nav .nav-link:hover {
+    color: var(--primary-gold) !important;
+}
+
+/* --- Cards --- */
+.card {
+    background-color: var(--surface-white);
+    border: none;
+    border-radius: 16px;
+    /* More rounded */
+    box-shadow: var(--shadow-soft);
+    margin-bottom: 1.5rem;
+    transition: var(--transition-fast);
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.card-header {
+    background-color: transparent;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    font-weight: 600;
+    padding: 1.25rem;
+    color: var(--structure-black);
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+
+/* --- Dashboard Widgets --- */
+.card-widget {
+    overflow: hidden;
+    position: relative;
+    border-left: 5px solid var(--primary-gold);
+}
+
+.card-widget .icon-wrapper {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.1;
+    font-size: 3rem;
+    color: var(--structure-black);
+}
+
+.card-widget h5 {
+    color: #6c757d;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+
+.card-widget p {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--structure-black);
+    margin: 0;
+}
+
+/* --- Buttons --- */
+.btn {
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-weight: 500;
+    transition: var(--transition-fast);
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-sm {
+    padding: 6px 16px;
+    font-size: 0.7rem;
+}
+
+/* Primary Button (Gold) */
+.btn-primary {
+    background-color: var(--primary-gold);
+    border: none;
+    color: var(--structure-black);
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+    background-color: #cda106 !important;
+    color: var(--structure-black) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 12px rgba(225, 177, 7, 0.3);
+}
+
+/* Secondary Button (Pink) */
+.btn-secondary {
+    background-color: var(--secondary-pink);
+    border: none;
+    color: #fff;
+}
+
+.btn-secondary:hover {
+    background-color: #e09090 !important;
+    color: #fff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 12px rgba(232, 161, 161, 0.3);
+}
+
+/* Base Styles Update */
+.text-gold {
+    color: var(--primary-gold) !important;
+}
+
+.text-pink {
+    color: var(--secondary-pink) !important;
+}
+
+.bg-gold {
+    background-color: var(--primary-gold) !important;
+}
+
+.bg-pink {
+    background-color: var(--secondary-pink) !important;
+}
+
+/* --- Forms --- */
+.form-control,
+.form-select {
+    border-radius: 8px;
+    padding: 10px 15px;
+    border: 1px solid #e0e0e0;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--primary-gold);
+    box-shadow: 0 0 0 4px rgba(225, 177, 7, 0.15);
+    outline: none;
+}
+
+/* --- Bootstrap Overrides (Eliminating Blue) --- */
+.text-primary {
+    color: var(--primary-gold) !important;
+}
+
+.bg-primary {
+    background-color: var(--primary-gold) !important;
+    color: var(--structure-black) !important;
+}
+
+.border-primary {
+    border-color: var(--primary-gold) !important;
+}
+
+.btn-outline-primary {
+    color: var(--structure-black);
+    border-color: var(--primary-gold);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-gold);
+    color: var(--structure-black);
+    border-color: var(--primary-gold);
+}
+
+.text-info {
+    color: var(--secondary-pink) !important;
+}
+
+.bg-info {
+    background-color: var(--secondary-pink) !important;
+    color: #fff !important;
+}
+
+.border-info {
+    border-color: var(--secondary-pink) !important;
+}
+
+.link-primary {
+    color: var(--structure-black) !important;
+}
+
+.link-primary:hover {
+    color: var(--primary-gold) !important;
+}
+
+a {
+    color: var(--structure-black);
+    text-decoration: none;
+    transition: var(--transition-fast);
+}
+
+a:hover {
+    color: var(--primary-gold);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--structure-black) !important;
+    border-color: #dee2e6 #dee2e6 #fff;
+    font-weight: 600;
+}
+
+.nav-tabs .nav-link {
+    color: #6c757d;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--primary-gold);
+    border-color: transparent;
+}
+
+/* Pagination if used */
+.page-link {
+    color: var(--structure-black);
+}
+
+.page-link:hover {
+    color: var(--primary-gold);
+    background-color: var(--bg-gray);
+}
+
+.page-item.active .page-link {
+    background-color: var(--primary-gold);
+    border-color: var(--primary-gold);
+    color: var(--structure-black);
+}
+
+/* --- Tables --- */
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: transparent;
+    color: #6c757d;
+    border-bottom: 2px solid #f0f0f0;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    padding: 1rem;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #fafbfc;
+}
+
+/* --- Chat Specific Styles --- */
+.chat-container {
+    height: 75vh;
+}
+
+/* Message Bubbles */
+.message-bubble {
+    padding: 12px 18px;
+    border-radius: 12px;
+    position: relative;
+    max-width: 75%;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    font-size: 0.95rem;
+}
+
+/* My Messages (Sent) - Gold */
+.message-sent .message-bubble {
+    background-color: var(--primary-gold);
+    color: var(--structure-black);
+    border-bottom-right-radius: 2px;
+    margin-left: auto;
+}
+
+/* Received Messages - Pink Border -> Changed to light pink bg for better readability */
+.message-received .message-bubble {
+    background-color: #fff;
+    color: var(--structure-black);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-left: 3px solid var(--secondary-pink);
+    border-bottom-left-radius: 2px;
+    margin-right: auto;
+}
+
+.chat-timestamp {
+    font-size: 0.70rem;
+    opacity: 0.6;
+    margin-top: 4px;
+    text-align: right;
+}
+
+.chat-sender-name {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-bottom: 4px;
+    margin-left: 2px;
+}
+
+/* --- Text Selection --- */
+::selection {
+    background: var(--secondary-pink);
+    color: var(--structure-black);
+}
+
+::-moz-selection {
+    background: var(--secondary-pink);
+    color: var(--structure-black);
+}
+
+/* Password Toggle Button */
+#togglePassword {
+    border-color: #e0e0e0;
+    /* Match form control border */
+    color: var(--structure-black);
+    background-color: transparent;
+}
+
+#togglePassword:hover {
+    background-color: var(--primary-gold);
+    border-color: var(--primary-gold);
+    color: var(--structure-black);
+    cursor: pointer;
+}
+
+/* Forgot Password Link */
+.forgot-password-link {
+    color: var(--text-dark);
+    font-size: 0.9rem;
+    padding: 10px;
+    /* Accessibility click area */
+    transition: var(--transition-fast);
+}
+
+.forgot-password-link:hover {
+    color: var(--secondary-pink);
+    text-decoration: underline;
+}
+
+/* Modal Customization */
+.forgot-password-modal {
+    border: none;
+    border-radius: 16px;
+
+    border-top: 5px solid var(--primary-gold);
+}
+
+/* --- Dark Mode Styles --- */
+body.dark-mode {
+    --bg-gray: #121212;
+    --surface-white: #1e1e1e;
+    --structure-black: #ffffff;
+    /* Text becomes white */
+    --text-dark: #e0e0e0;
+    --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .navbar {
+    background-color: #000000 !important;
+    /* Keep navbar black */
+    border-bottom: 1px solid #333;
+}
+
+body.dark-mode .card {
+    background-color: var(--surface-white);
+    color: var(--text-dark);
+}
+
+body.dark-mode .card-header,
+body.dark-mode .bg-white,
+body.dark-mode .list-group-item {
+    background-color: var(--surface-white) !important;
+    color: var(--text-dark) !important;
+    border-color: #333;
+}
+
+body.dark-mode .bg-light {
+    background-color: #2c2c2c !important;
+    color: var(--text-dark) !important;
+}
+
+body.dark-mode .text-muted {
+    color: #a0a0a0 !important;
+}
+
+body.dark-mode .table thead th {
+    border-bottom-color: #333;
+    color: #a0a0a0;
+}
+
+body.dark-mode .table tbody td {
+    border-bottom-color: #333;
+    color: var(--text-dark);
+}
+
+body.dark-mode .table-hover tbody tr:hover {
+    background-color: #2c2c2c;
+}
+
+body.dark-mode .form-control {
+    background-color: #2c2c2c;
+    border-color: #444;
+    color: #fff;
+}
+
+body.dark-mode .form-control:focus {
+    background-color: #2c2c2c;
+    color: #fff;
+}
+
+body.dark-mode .card-widget h5 {
+    color: #a0a0a0;
+}
+
+body.dark-mode .card-widget p {
+    color: #fff;
+}
+
+/* Dark Mode Chat */
+body.dark-mode .message-received .message-bubble {
+    background-color: #2c2c2c;
+    color: #fff;
+    border-color: #444;
+}
+
+body.dark-mode .nav-tabs .nav-link {
+    color: #a0a0a0;
+}
+
+body.dark-mode .nav-tabs .nav-link.active {
+    background-color: var(--surface-white);
+    color: var(--primary-gold) !important;
+    border-color: #333 #333 var(--surface-white);
+}

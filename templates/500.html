@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container text-center py-5">
+    <h1 class="display-1 text-danger">500</h1>
+    <h2>Error Interno del Servidor</h2>
+    <p class="lead">Algo salió mal en nuestro lado. Por favor, inténtalo de nuevo más tarde.</p>
+    <a href="{{ url_for('auth.login') }}" class="btn btn-primary mt-3">Volver al Inicio</a>
+</div>
+{% endblock %}

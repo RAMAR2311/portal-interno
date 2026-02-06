@@ -1,0 +1,458 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <!-- Sidebar: Search & Filters -->
+    <div class="col-lg-3 mb-4">
+        <div class="card h-100 card-glass border-0">
+            <div class="card-header bg-transparent border-bottom-0 pt-4">
+                <h5 class="fw-bold mb-0 text-dark">Agenda Corporativa</h5>
+                <small class="text-muted">Gestiona tus eventos y consulta la disponibilidad del equipo.</small>
+            </div>
+            <div class="card-body">
+                <!-- User Search / List -->
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-uppercase text-muted mb-3">Equipo</label>
+
+                    <div class="user-list pe-2" id="userListContainer">
+                        <!-- My Card -->
+                        <div class="user-card p-3 rounded d-flex align-items-center active" onclick="selectUser(this)"
+                            data-user-id="{{ current_user.id }}">
+                            <div class="avatar-circle me-3" style="background-color: var(--gold);">
+                                {{ current_user.nombre[:2].upper() }}
+                            </div>
+                            <div class="lh-1">
+                                <h6 class="mb-0 fw-bold">{{ current_user.nombre }}</h6>
+                                <small class="text-muted">Mi Calendario</small>
+                            </div>
+                        </div>
+
+                        <!-- Colleagues -->
+                        {% for u in users %}
+                        <div class="user-card p-3 rounded d-flex align-items-center" onclick="selectUser(this)"
+                            data-user-id="{{ u.id }}">
+                            <div class="avatar-circle me-3" style="background-color: #6c757d;">
+                                {{ u.nombre[:2].upper() }}
+                            </div>
+                            <div class="lh-1">
+                                <h6 class="mb-0 fw-bold text-dark">{{ u.nombre }}</h6>
+                                <small class="text-muted">{{ u.cargo }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Legend -->
+                <div>
+                    <label class="form-label small fw-bold text-uppercase text-muted">Leyenda</label>
+                    <ul class="list-unstyled small">
+                        <li class="mb-2 d-flex align-items-center">
+                            <span class="d-inline-block rounded me-2"
+                                style="width:12px; height:12px; background:white; border-left:4px solid var(--gold);"></span>
+                            Mis Eventos
+                        </li>
+                        <li class="mb-2 d-flex align-items-center">
+                            <span class="d-inline-block rounded me-2"
+                                style="width:12px; height:12px; background:white; border-left:4px solid var(--pink);"></span>
+                            Fuera de Oficina
+                        </li>
+                        <li class="mb-2 d-flex align-items-center">
+                            <span class="d-inline-block rounded me-2"
+                                style="width:12px; height:12px; background:white; border-left:4px solid #6c757d;"></span>
+                            Ocupado
+                        </li>
+                    </ul>
+                </div>
+
+                <hr>
+
+                <div class="d-grid">
+                    <button class="btn btn-primary rounded-pill py-2 shadow-sm" id="btnCreateEvent">
+                        <i class="fas fa-plus me-2"></i> Nuevo Evento
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Calendar Area -->
+    <div class="col-lg-9">
+        <div class="card card-glass shadow-sm border-0">
+            <div class="card-body p-4">
+                <div id='calendar' style="min-height: 750px;" data-current-user-id="{{ current_user.id }}"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Event Modal -->
+<div class="modal fade modal-premium" id="eventModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-white" id="modalTitle">Nuevo Evento</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="eventForm">
+                    <input type="hidden" id="eventId">
+
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="eventTitle" placeholder="Título" required>
+                        <label for="eventTitle">Título del evento</label>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <div class="form-floating">
+                                <input type="datetime-local" class="form-control" id="eventStart" required>
+                                <label for="eventStart">Inicio</label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-floating">
+                                <input type="datetime-local" class="form-control" id="eventEnd" required>
+                                <label for="eventEnd">Fin</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <select class="form-select" id="eventType">
+                            <option value="Reunión">Reunión</option>
+                            <option value="Ocupado">Ocupado</option>
+                            <option value="Fuera de Oficina">Fuera de Oficina</option>
+                            <option value="Recordatorio">Recordatorio</option>
+                        </select>
+                        <label for="eventType">Tipo de evento</label>
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <textarea class="form-control" id="eventDesc" placeholder="Descripción"
+                            style="height: 100px"></textarea>
+                        <label for="eventDesc">Descripción (Opcional)</label>
+                    </div>
+
+                    <div class="form-check form-switch p-3 bg-light rounded d-flex align-items-center">
+                        <input class="form-check-input me-3" type="checkbox" id="eventPrivate"
+                            style="width: 3em; height: 1.5em;">
+                        <div>
+                            <label class="form-check-label fw-bold" for="eventPrivate">Evento Privado</label>
+                            <div class="text-muted small">Solo tú verás los detalles. Los demás verán "Ocupado".</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-link text-danger me-auto d-none text-decoration-none"
+                    id="btnDelete">
+                    <i class="fas fa-trash-alt me-1"></i> Eliminar
+                </button>
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4" id="btnSave">Guardar Evento</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+<script>
+    // Global function for Sidebar Selection
+    let selectedUserId;
+    let calendarInstance = null;
+    let currentUserId;
+
+    function selectUser(element) {
+        let userId = parseInt(element.dataset.userId);
+        selectedUserId = userId;
+
+        // Update visual active state
+        document.querySelectorAll('.user-card').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
+
+        // Refetch calendar
+        if (calendarInstance) {
+            calendarInstance.refetchEvents();
+        }
+
+        // Update Create Button State
+        document.getElementById('btnCreateEvent').disabled = (userId !== currentUserId);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var calendarEl = document.getElementById('calendar');
+        var modalTitle = document.getElementById('modalTitle');
+        var eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+        var btnSave = document.getElementById('btnSave');
+        var btnDelete = document.getElementById('btnDelete');
+
+        // Form Fields
+        var eventId = document.getElementById('eventId');
+        var eventTitle = document.getElementById('eventTitle');
+        var eventStart = document.getElementById('eventStart');
+        var eventEnd = document.getElementById('eventEnd');
+        var eventType = document.getElementById('eventType');
+        var eventDesc = document.getElementById('eventDesc');
+        var eventPrivate = document.getElementById('eventPrivate');
+
+        calendarInstance = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'timeGridWeek',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            themeSystem: 'bootstrap5',
+            locale: 'es',
+            buttonText: { today: 'Hoy', month: 'Mes', week: 'Semana', day: 'Día' },
+            slotMinTime: '06:00:00',
+            slotMaxTime: '22:00:00',
+            allDaySlot: true,
+            nowIndicator: true,
+            height: 'auto',
+            navLinks: true,
+            editable: true,
+            selectable: true,
+            dayMaxEvents: true,
+
+            // Allow drop/resize only for my events
+            eventAllow: function (dropInfo, draggedEvent) {
+                return draggedEvent.extendedProps.is_mine;
+            },
+
+            // --- Custom Event Rendering ---
+            eventClassNames: function (arg) {
+                return ['fc-event-custom'];
+            },
+
+            eventDidMount: function (info) {
+                const event = info.event;
+                const el = info.el;
+                const props = event.extendedProps;
+
+                // 1. Icon Injection
+                let iconClass = 'fa-calendar-alt';
+                let borderColor = 'var(--gold)';
+
+                if (props.type === 'Reunión') iconClass = 'fa-users';
+                else if (props.type === 'Fuera de Oficina') { iconClass = 'fa-plane'; borderColor = 'var(--pink)'; }
+                else if (props.type === 'Recordatorio') iconClass = 'fa-bell';
+                else if (props.type === 'Ocupado') { iconClass = 'fa-clock'; borderColor = '#6c757d'; }
+
+                // Override border color if set in event props (from backend logic)
+                // Backend sent 'color' prop. Let's use it for border.
+                if (event.backgroundColor) {
+                    // We are hijacking backgroundColor from backend to mean "Type Color"
+                    // Front end CSS uses border-left.
+                    el.style.borderLeftColor = event.backgroundColor;
+                    el.style.backgroundColor = 'rgba(255,255,255,0.95)'; // force white glass
+                    if (document.body.classList.contains('dark-mode')) {
+                        el.style.backgroundColor = '#333';
+                    }
+                }
+
+                // Inject content
+                let content = `
+                    <div class="fc-event-icon"><i class="fas ${iconClass}" style="color:${event.backgroundColor}"></i></div>
+                    <div class="fc-event-title">${event.title}</div>
+                `;
+                el.innerHTML = content;
+
+                // 2. Tippy.js Tooltip
+                tippy(el, {
+                    content: `
+                        <div class="text-start">
+                            <strong class="d-block mb-1">${event.title}</strong>
+                            <div class="small mb-1"><i class="far fa-clock me-1"></i> ${event.start ? event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''} - ${event.end ? event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</div>
+                            ${props.description ? `<div class="small text-muted border-top pt-1 mt-1">${props.description}</div>` : ''}
+                            ${props.is_private ? '<div class="badge bg-secondary mt-1"><i class="fas fa-lock me-1"></i> Privado</div>' : ''}
+                        </div>
+                    `,
+                    allowHTML: true,
+                    theme: 'light-border',
+                    animation: 'scale',
+                });
+            },
+
+            // Load Events
+            events: function (fetchInfo, successCallback, failureCallback) {
+                var url = `/calendar/api/events?start=${fetchInfo.startStr}&end=${fetchInfo.endStr}&user_id=${selectedUserId}`;
+
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        var events = data.map(evt => {
+                            // Backend sends colors. We map them to our variables for the border logic in eventDidMount
+                            if (!evt.extendedProps.is_mine) {
+                                evt.backgroundColor = '#6c757d';
+                                evt.editable = false;
+                            } else {
+                                if (evt.type === 'Fuera de Oficina') evt.backgroundColor = 'var(--pink)';
+                                else evt.backgroundColor = 'var(--gold)';
+                            }
+                            return evt;
+                        });
+                        successCallback(events);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching events:', error);
+                        failureCallback(error);
+                    });
+            },
+
+            // Click on empty space
+            select: function (info) {
+                if (selectedUserId !== currentUserId) {
+                    showToast('Solo puedes crear eventos en tu propio calendario.', 'Aviso', 'warning');
+                    calendarInstance.unselect();
+                    return;
+                }
+
+                resetModal();
+                modalTitle.innerText = 'Nuevo Evento';
+                eventStart.value = toLocalISO(info.start);
+                eventEnd.value = toLocalISO(info.end);
+
+                btnDelete.classList.add('d-none');
+                eventModal.show();
+            },
+
+            // Click on Event
+            eventClick: function (info) {
+                var props = info.event.extendedProps;
+                if (!props.is_mine) return;
+
+                resetModal();
+                modalTitle.innerText = 'Editar Evento';
+                eventId.value = info.event.id;
+                eventTitle.value = info.event.title;
+                eventStart.value = toLocalISO(info.event.start);
+                eventEnd.value = toLocalISO(info.event.end);
+                eventType.value = info.event.extendedProps.type || 'Reunión';
+                eventDesc.value = info.event.extendedProps.description;
+                eventPrivate.checked = info.event.extendedProps.is_private;
+
+                btnDelete.classList.remove('d-none');
+                eventModal.show();
+            },
+
+            eventDrop: function (info) { updateEventDates(info.event); },
+            eventResize: function (info) { updateEventDates(info.event); }
+        });
+
+        calendarInstance.render();
+
+        // --- Helpers ---
+        function toLocalISO(date) {
+            var offset = date.getTimezoneOffset() * 60000;
+            return (new Date(date - offset)).toISOString().slice(0, 16);
+        }
+
+        function resetModal() {
+            eventId.value = '';
+            eventTitle.value = '';
+            eventDesc.value = '';
+            eventPrivate.checked = false;
+            eventType.value = 'Reunión';
+        }
+
+        document.getElementById('btnCreateEvent').addEventListener('click', function () {
+            if (selectedUserId !== currentUserId) {
+                // Auto switch to me?
+                // Or just warn?
+                // Plan: Just warn or force switch. Let's force switch for better UX.
+                var myCard = document.querySelector(`.user-card[data-user-id="${currentUserId}"]`);
+                if (myCard) selectUser(currentUserId, myCard);
+            }
+
+            var now = new Date();
+            now.setMinutes(0, 0, 0);
+            now.setHours(now.getHours() + 1);
+            var end = new Date(now);
+            end.setHours(end.getHours() + 1);
+
+            resetModal();
+            modalTitle.innerText = 'Nuevo Evento';
+            eventStart.value = toLocalISO(now);
+            eventEnd.value = toLocalISO(end);
+            btnDelete.classList.add('d-none');
+            eventModal.show();
+        });
+
+        // Save
+        btnSave.addEventListener('click', function () {
+            if (!eventTitle.value || !eventStart.value || !eventEnd.value) {
+                alert('Por favor completa los campos obligatorios.');
+                return;
+            }
+
+            var id = eventId.value;
+            var method = id ? 'PUT' : 'POST';
+            var url = id ? `/calendar/api/events/${id}` : '/calendar/api/events';
+
+            var payload = {
+                title: eventTitle.value,
+                start: eventStart.value,
+                end: eventEnd.value,
+                type: eventType.value,
+                description: eventDesc.value,
+                is_private: eventPrivate.checked
+            };
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                    } else {
+                        eventModal.hide();
+                        calendarInstance.refetchEvents();
+                        showToast('Evento guardado exitosamente.', 'Éxito', 'success');
+                    }
+                });
+        });
+
+        // Delete
+        btnDelete.addEventListener('click', function () {
+            if (!confirm('¿Estás seguro de eliminar este evento?')) return;
+            var id = eventId.value;
+            fetch(`/calendar/api/events/${id}`, { method: 'DELETE' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        eventModal.hide();
+                        calendarInstance.refetchEvents();
+                        showToast('Evento eliminado.', 'Info', 'info');
+                    }
+                });
+        });
+
+        function updateEventDates(event) {
+            fetch(`/calendar/api/events/${event.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    start: event.start.toISOString(),
+                    end: event.end.toISOString()
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        showToast('Error al mover evento: ' + data.error, 'Error', 'danger');
+                        event.revert();
+                    }
+                });
+        }
+    });
+</script>
+{% endblock %}

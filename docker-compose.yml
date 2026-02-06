@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: portal_interno_web
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/portal_db
+      - SECRET_KEY=cambiar_esta_clave_en_produccion
+      - FLASK_APP=app.py
+      - FLASK_DEBUG=0
+    depends_on:
+      - db
+    volumes:
+      - ./static/uploads:/app/static/uploads
+      # Uncomment the next line for development (live reload)
+      # - .:/app
+
+  db:
+    image: postgres:15
+    container_name: portal_interno_db
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=portal_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:

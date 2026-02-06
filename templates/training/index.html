@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h2 class="fw-bold"><i class="fas fa-graduation-cap text-gold me-2"></i>Centro de Capacitaciones</h2>
+        <p class="text-muted">Material educativo y recursos de formación.</p>
+    </div>
+    {% if current_user.rol == 'Admin' %}
+    <div class="col-auto">
+        <a href="{{ url_for('training.upload') }}" class="btn btn-dark rounded-pill shadow-sm">
+            <i class="fas fa-cloud-upload-alt me-2 text-gold"></i>Subir Material
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="row g-4">
+    {% for training in trainings %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-sm hover-card" style="border-radius: 12px; overflow: hidden;">
+            <div class="position-relative bg-light d-flex align-items-center justify-content-center"
+                style="height: 180px;">
+                {% if training.file_type == 'video' %}
+                <i class="fas fa-play-circle fa-4x text-gold opacity-75"></i>
+                <div
+                    class="position-absolute bottom-0 start-0 w-100 bg-dark bg-opacity-50 text-white text-center py-1 small">
+                    <i class="fas fa-video me-1"></i> Video
+                </div>
+                {% else %}
+                <i class="fas fa-file-pdf fa-4x text-danger opacity-75"></i>
+                <div
+                    class="position-absolute bottom-0 start-0 w-100 bg-dark bg-opacity-50 text-white text-center py-1 small">
+                    <i class="fas fa-file-alt me-1"></i> Documento
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title fw-bold text-dark mb-2">{{ training.title }}</h5>
+                <p class="card-text text-muted small flex-grow-1">{{ training.description or 'Sin descripción.' }}</p>
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                    <small class="text-muted"><i class="far fa-clock me-1"></i> {{ training.created_at.strftime('%d %b,
+                        %Y') }}</small>
+                    <a href="{{ url_for('training.view', id=training.id) }}"
+                        class="btn btn-outline-dark btn-sm rounded-pill px-3">
+                        Ver Ahora
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 py-5 text-center">
+        <div class="text-muted opacity-50 mb-3">
+            <i class="fas fa-folder-open fa-4x"></i>
+        </div>
+        <h5>No hay capacitaciones disponibles.</h5>
+        {% if current_user.rol == 'Admin' %}
+        <p>Sube el primer material educativo.</p>
+        <a href="{{ url_for('training.upload') }}" class="btn btn-primary mt-2">Comenzar</a>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+    .hover-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,14 @@
+He implementado la paginación de mensajes como solicitaste:
+
+**Backend (`routes/chat.py`):**
+- La ruta `/get_messages` ahora acepta un parámetro `page` (por defecto 1).
+- Carga mensajes de 20 en 20 (`per_page=20`).
+- Ordena por fecha descendente para obtener los más recientes, y luego revierte la lista para enviarlos en orden cronológico (antiguo -> nuevo).
+- Retorna información de paginación (`has_more`, `page`).
+
+**Frontend (`templates/chat/index.html`):**
+- Se agregó un listener de `scroll` al área del chat.
+- Cuando el usuario hace scroll hacia arriba (llega al tope), se solicita la página siguiente (`page + 1`).
+- Los mensajes antiguos se insertan al inicio (`prepend`) manteniendo la posición de scroll relativa, para una experiencia de usuario fluida.
+
+Ahora el chat cargará rápido inicialmente y permitirá acceder al historial completo bajo demanda.

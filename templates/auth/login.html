@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    /* Override Body for Login Page */
+    body {
+        background-image: url("{{ url_for('static', filename='img/mc.png') }}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        min-height: 100vh;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Optional: Hide Navbar for cleaner immersive experience if desired, 
+       or just make it transparent. For now, we leave it as user didn't ask to remove it. */
+
+    /* Center the card vertically in the available space */
+    .login-container {
+        min-height: 85vh;
+        /* Account for potential navbar height */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .login-card {
+        background-color: rgba(255, 255, 255, 0.9);
+        /* Semi-transparent white */
+        border-radius: 12px;
+        border: none;
+    }
+
+    .login-header {
+        background: transparent;
+        border-bottom: none;
+        padding-top: 2rem;
+        padding-bottom: 1rem;
+    }
+
+    .form-control {
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+    }
+
+    .btn-primary {
+        padding: 0.75rem;
+        font-weight: 600;
+        border-radius: 8px;
+    }
+</style>
+
+<div class="row justify-content-center login-container">
+    <div class="col-md-5 col-lg-4">
+        <div class="card login-card shadow-lg">
+            <div class="card-header login-header text-center">
+                <h3 class="fw-bold mb-0">Iniciar Sesión</h3>
+                <small class="text-muted">Bienvenido al Portal Corporativo</small>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Correo Electrónico</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i
+                                    class="fas fa-envelope text-muted"></i></span>
+                            <input type="email" name="email" class="form-control border-start-0 ps-0"
+                                placeholder="usuario@empresa.com" required>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Contraseña</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i
+                                    class="fas fa-lock text-muted"></i></span>
+                            <input type="password" name="password" id="password"
+                                class="form-control border-start-0 border-end-0 ps-0" placeholder="••••••••" required>
+                            <button class="btn btn-outline-secondary bg-white border-start-0" type="button"
+                                id="togglePassword">
+                                <i class="fas fa-eye" id="toggleIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 shadow-sm mb-3">
+                        INGRESAR
+                    </button>
+
+                    <div class="text-center">
+                        <a href="#" class="text-decoration-none small text-muted" data-bs-toggle="modal"
+                            data-bs-target="#forgotPasswordModal">
+                            ¿Olvidaste tu contraseña?
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius: 12px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Restablecer Contraseña</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4 px-4">
+                <div class="mb-3 text-warning">
+                    <i class="fas fa-user-lock fa-3x"></i>
+                </div>
+                <p class="mb-0 text-muted">Por razones de seguridad, contacta al <strong>Administrador del
+                        Sistema</strong> para restablecer tus credenciales.</p>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Entendido</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const togglePassword = document.querySelector('#togglePassword');
+        const password = document.querySelector('#password');
+        const toggleIcon = document.querySelector('#toggleIcon');
+
+        if (togglePassword && password && toggleIcon) {
+            togglePassword.addEventListener('click', function (e) {
+                const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                password.setAttribute('type', type);
+
+                if (type === 'text') {
+                    toggleIcon.classList.remove('fa-eye');
+                    toggleIcon.classList.add('fa-eye-slash');
+                } else {
+                    toggleIcon.classList.remove('fa-eye-slash');
+                    toggleIcon.classList.add('fa-eye');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

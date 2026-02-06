@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="mb-4">
+        <a href="{{ url_for('training.index') }}" class="text-decoration-none text-muted">
+            <i class="fas fa-arrow-left me-2"></i>Volver a Capacitaciones
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Content Column -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm mb-4 overflow-hidden" style="border-radius: 16px;">
+                {% if training.file_type == 'video' %}
+                <div class="bg-black text-center p-0">
+                    <video controls class="w-100" style="max-height: 500px;" poster="">
+                        <source src="{{ url_for('static', filename='uploads/trainings/' + training.filename) }}"
+                            type="video/mp4">
+                        Tu navegador no soporta el elemento de video.
+                    </video>
+                </div>
+                {% else %}
+                <div class="bg-light p-5 text-center">
+                    {% if training.filename.endswith('.pdf') %}
+                    <iframe src="{{ url_for('static', filename='uploads/trainings/' + training.filename) }}"
+                        width="100%" height="600px" style="border:none;">
+                    </iframe>
+                    {% else %}
+                    <i class="fas fa-file-powerpoint fa-5x text-muted mb-3"></i>
+                    <h4 class="text-muted">Vista previa no disponible</h4>
+                    <p>Descarga el archivo para verlo.</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="card-body p-4">
+                    <h3 class="fw-bold mb-3">{{ training.title }}</h3>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <span class="badge bg-light text-dark border me-2">
+                                <i
+                                    class="{{ 'fas fa-video' if training.file_type == 'video' else 'fas fa-file-alt' }} me-1"></i>
+                                {{ training.file_type|capitalize }}
+                            </span>
+                            <small class="text-muted">{{ training.created_at.strftime('%d %B, %Y') }}</small>
+                        </div>
+                        <a href="{{ url_for('training.download', id=training.id) }}"
+                            class="btn btn-dark rounded-pill shadow-sm">
+                            <i class="fas fa-download me-2 text-gold"></i> Descargar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar / Details -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">Acerca de este contenido</h5>
+                    <p class="text-muted">{{ training.description or 'Sin descripción disponible.' }}</p>
+                    <hr>
+                    <h6 class="fw-bold small text-uppercase text-muted mb-3">Subido por</h6>
+                    <div class="d-flex align-items-center">
+                        <div class="avatar bg-gold text-white rounded-circle d-flex align-items-center justify-content-center me-3"
+                            style="width: 40px; height: 40px; font-weight: bold;">
+                            {{ training.uploader.nombre[:2].upper() }}
+                        </div>
+                        <div>
+                            <div class="fw-bold">{{ training.uploader.nombre }}</div>
+                            <small class="text-muted">{{ training.uploader.cargo }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

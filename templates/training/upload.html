@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="card-header bg-dark text-white py-3" style="border-radius: 16px 16px 0 0;">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-cloud-upload-alt me-2 text-gold"></i>Subir Nuevo Material</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" enctype="multipart/form-data" id="uploadForm">
+
+                    <div class="mb-4">
+                        <label for="title" class="form-label fw-bold">Título de la Capacitación</label>
+                        <input type="text" class="form-control form-control-lg" id="title" name="title" required
+                            placeholder="Ej: Protocolo de Seguridad 2024">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="description" class="form-label fw-bold">Descripción</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                            placeholder="Breve resumen del contenido..."></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="file" class="form-label fw-bold">Archivo (Video o Documento)</label>
+                        <input class="form-control" type="file" id="file" name="file" required
+                            accept=".mp4,.mov,.avi,.pdf,.pptx,.ppt,.doc,.docx">
+                        <div class="form-text">
+                            Formatos permitidos: MP4, MOV, PDF, PPTX. Tamaño máx: 500MB.
+                        </div>
+                    </div>
+
+                    <div class="d-none" id="uploadProgress">
+                        <div class="progress mb-2" style="height: 10px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-gold"
+                                role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <p class="text-center text-muted small"><i class="fas fa-spinner fa-spin me-1"></i> Subiendo
+                            archivo, por favor espera...</p>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="{{ url_for('training.index') }}" class="btn btn-light rounded-pill px-4">Cancelar</a>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">
+                            Subir Material
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('uploadForm').addEventListener('submit', function () {
+        // Show spinner/progress
+        document.getElementById('uploadProgress').classList.remove('d-none');
+        // Disable button to prevent double submit
+        this.querySelector('button[type="submit"]').disabled = true;
+        this.querySelector('button[type="submit"]').innerHTML = 'Procesando...';
+    });
+</script>
+{% endblock %}

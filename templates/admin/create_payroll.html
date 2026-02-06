@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow-lg">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0"><i class="fas fa-file-invoice-dollar"></i> Generar Nómina Mensual</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.create_payroll') }}" id="payrollForm">
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label" for="user_id"><strong>Empleado</strong></label>
+                            <select name="user_id" id="user_id" class="form-select" required onchange="updateSalary()">
+                                <option value="">Seleccione un empleado...</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}" data-salary="{{ user.salario }}">{{ user.nombre }} - {{
+                                    user.cargo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label"><strong>Mes</strong></label>
+                            <select name="mes" class="form-select" required>
+                                <option value="Enero">Enero</option>
+                                <option value="Febrero">Febrero</option>
+                                <option value="Marzo">Marzo</option>
+                                <option value="Abril">Abril</option>
+                                <option value="Mayo">Mayo</option>
+                                <option value="Junio">Junio</option>
+                                <option value="Julio">Julio</option>
+                                <option value="Agosto">Agosto</option>
+                                <option value="Septiembre">Septiembre</option>
+                                <option value="Octubre">Octubre</option>
+                                <option value="Noviembre">Noviembre</option>
+                                <option value="Diciembre">Diciembre</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label"><strong>Año</strong></label>
+                            <input type="number" name="anio" class="form-control" value="2026" required>
+                        </div>
+                        <div class="col-md-3 mt-3">
+                            <label class="form-label"><strong>Período</strong></label>
+                            <select name="periodo" class="form-select" required>
+                                <option value="Primera Quincena">Primera Quincena</option>
+                                <option value="Segunda Quincena">Segunda Quincena</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h5 class="text-primary border-bottom pb-2">Devengados</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Salario Base</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" name="salario_base" id="salario_base"
+                                    class="form-control" required oninput="calculateTotals()">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Auxilio Transporte</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" name="auxilio_transporte" id="auxilio_transporte"
+                                    class="form-control" value="0" required oninput="calculateTotals()">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Bonificaciones</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" name="bonificaciones" id="bonificaciones"
+                                    class="form-control" value="0" required oninput="calculateTotals()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <h5 class="text-danger border-bottom pb-2 mt-4">Deducciones</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Días Injustificados</label>
+                            <input type="number" name="dias_injustificados" id="dias_injustificados"
+                                class="form-control" value="0" min="0" oninput="calculateDeduction()">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Valor Descuento Días</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" name="valor_descuento_dias" id="valor_descuento_dias"
+                                    class="form-control" value="0" required oninput="calculateTotals()">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Aporte Salud (4%)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" name="aporte_salud" id="aporte_salud"
+                                    class="form-control" value="0" required oninput="calculateTotals()">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Aporte Pensión (4%)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" name="aporte_pension" id="aporte_pension"
+                                    class="form-control" value="0" required oninput="calculateTotals()">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Otros Descuentos</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" name="otros_descuentos" id="otros_descuentos"
+                                    class="form-control" value="0" required oninput="calculateTotals()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-4">
+                        <div class="row text-center">
+                            <div class="col-md-4">
+                                <h6>Total Devengado</h6>
+                                <h4 id="displayDevengado">$0.00</h4>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Total Deducido</h6>
+                                <h4 id="displayDeducido" class="text-danger">$0.00</h4>
+                            </div>
+                            <div class="col-md-4">
+                                <h6><strong>Neto a Pagar</strong></h6>
+                                <h3 id="displayNeto" class="text-success">$0.00</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-3">
+                        <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-check-circle"></i> Generar
+                            Nómina y PDF</button>
+                        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateSalary() {
+        const select = document.getElementById('user_id');
+        const salary = select.options[select.selectedIndex].getAttribute('data-salary');
+        if (salary) {
+            // Divide base salary by 2 for fortnightly payroll
+            const baseMensual = parseFloat(salary);
+            const baseQuincenal = baseMensual / 2;
+
+            document.getElementById('salario_base').value = baseQuincenal.toFixed(2);
+
+            // Auto calculate default legal deductions (approx 4% Health + 4% Pension of the quincenal base)
+            const contribution = baseQuincenal * 0.04;
+            document.getElementById('aporte_salud').value = contribution.toFixed(2);
+            document.getElementById('aporte_pension').value = contribution.toFixed(2);
+            calculateTotals();
+        }
+    }
+
+    function calculateDeduction() {
+        const days = parseFloat(document.getElementById('dias_injustificados').value) || 0;
+        const salary = parseFloat(document.getElementById('salario_base').value) || 0;
+
+        if (salary > 0) {
+            const dayValue = salary / 30;
+            const deduction = dayValue * days;
+            document.getElementById('valor_descuento_dias').value = deduction.toFixed(2);
+        }
+        calculateTotals();
+    }
+
+    function calculateTotals() {
+        // Devengados
+        const salario = parseFloat(document.getElementById('salario_base').value) || 0;
+        const aux = parseFloat(document.getElementById('auxilio_transporte').value) || 0;
+        const bonos = parseFloat(document.getElementById('bonificaciones').value) || 0;
+        const totalDev = salario + aux + bonos;
+
+        // Deducidos
+        const descDias = parseFloat(document.getElementById('valor_descuento_dias').value) || 0;
+        const salud = parseFloat(document.getElementById('aporte_salud').value) || 0;
+        const pension = parseFloat(document.getElementById('aporte_pension').value) || 0;
+        const otros = parseFloat(document.getElementById('otros_descuentos').value) || 0;
+        const totalDed = descDias + salud + pension + otros;
+
+        const neto = totalDev - totalDed;
+
+        // Update Display
+        document.getElementById('displayDevengado').innerText = '$' + totalDev.toLocaleString('es-CO', { minimumFractionDigits: 2 });
+        document.getElementById('displayDeducido').innerText = '$' + totalDed.toLocaleString('es-CO', { minimumFractionDigits: 2 });
+        document.getElementById('displayNeto').innerText = '$' + neto.toLocaleString('es-CO', { minimumFractionDigits: 2 });
+    }
+</script>
+{% endblock %}

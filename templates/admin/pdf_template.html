@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    {{ pdf_styles | safe }}
+    <style>
+        body {
+            font-family: Helvetica, sans-serif;
+            font-size: 10pt;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #0056b3;
+            padding-bottom: 10px;
+        }
+
+        .header h1 {
+            color: #0056b3;
+            margin: 0;
+            text-transform: uppercase;
+            font-size: 16pt;
+        }
+
+        .header p {
+            margin: 2px 0;
+            font-size: 9pt;
+            color: #666;
+        }
+
+        .section-title {
+            background-color: #f0f0f0;
+            padding: 5px;
+            font-weight: bold;
+            border-left: 4px solid #0056b3;
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+
+        th,
+        td {
+            padding: 6px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            text-align: left;
+            background-color: #f9f9f9;
+            font-weight: bold;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .total-row td {
+            font-weight: bold;
+            border-top: 2px solid #333;
+            background-color: #e9ecef;
+        }
+
+        .neto-pay {
+            font-size: 14pt;
+            color: #28a745;
+            text-align: right;
+            border: 2px solid #28a745;
+            padding: 10px;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        #footerContent {
+            text-align: center;
+            font-size: 8pt;
+            color: #999;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>CHAT MC</h1>
+        <p>CHAT MC</p>
+        <p>NIT: 900.000.000-1</p>
+    </div>
+
+    <table>
+        <tr>
+            <td width="50%">
+                <strong>Empleado:</strong> {{ user.nombre }}<br>
+                <strong>Cargo:</strong> {{ user.cargo }}<br>
+                <strong>Identificación:</strong> {{ user.id }} <!-- Assuming ID is cédula or close enough -->
+            </td>
+            <td width="50%" class="text-right">
+                <strong>Período:</strong> {{ periodo }} - {{ mes }} {{ anio }}<br>
+                <strong>Fecha de Emisión:</strong> {{ generated_at.strftime('%Y-%m-%d') }}
+            </td>
+        </tr>
+    </table>
+
+    <div class="section-title">Detalle de Devengados (Ingresos)</div>
+    <table>
+        <tr>
+            <th>Concepto</th>
+            <th class="text-right">Valor</th>
+        </tr>
+        <tr>
+            <td>Salario Básico</td>
+            <td class="text-right">${{ "{:,.2f}".format(salario_base) }}</td>
+        </tr>
+        <tr>
+            <td>Auxilio de Transporte</td>
+            <td class="text-right">${{ "{:,.2f}".format(auxilio_transporte) }}</td>
+        </tr>
+        <tr>
+            <td>Bonificaciones</td>
+            <td class="text-right">${{ "{:,.2f}".format(bonificaciones) }}</td>
+        </tr>
+        <tr class="total-row">
+            <td>Total Devengado</td>
+            <td class="text-right">${{ "{:,.2f}".format(total_devengado) }}</td>
+        </tr>
+    </table>
+
+    <div class="section-title">Detalle de Deducciones (Descuentos)</div>
+    <table>
+        <tr>
+            <th>Concepto</th>
+            <th class="text-right">Valor</th>
+        </tr>
+        {% if dias_injustificados > 0 %}
+        <tr>
+            <td>Ausencias Injustificadas ({{ dias_injustificados }} días)</td>
+            <td class="text-right">${{ "{:,.2f}".format(valor_descuento_dias) }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td>Aporte Salud (4%)</td>
+            <td class="text-right">${{ "{:,.2f}".format(aporte_salud) }}</td>
+        </tr>
+        <tr>
+            <td>Aporte Pensión (4%)</td>
+            <td class="text-right">${{ "{:,.2f}".format(aporte_pension) }}</td>
+        </tr>
+        {% if otros_descuentos > 0 %}
+        <tr>
+            <td>Otros Descuentos</td>
+            <td class="text-right">${{ "{:,.2f}".format(otros_descuentos) }}</td>
+        </tr>
+        {% endif %}
+        <tr class="total-row">
+            <td>Total Deducido</td>
+            <td class="text-right">${{ "{:,.2f}".format(total_deducido) }}</td>
+        </tr>
+    </table>
+
+    <div class="neto-pay">
+        Neto a Pagar: ${{ "{:,.2f}".format(neto_pagar) }}
+    </div>
+
+    <div id="footerContent">
+        Este documento es un comprobante de nómina generado electrónicamente.
+    </div>
+</body>
+
+</html>

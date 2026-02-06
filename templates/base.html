@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHAT MC</title>
+    <!-- Favicon -->
+    <!-- Favicon -->
+    <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='img/favicon.jpg') }}">
+    <!-- Google Fonts: Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Custom Premium Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Calendar Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/calendar_custom.css') }}">
+
+    <!-- Tippy.js (via CDN) -->
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/scale.css" />
+</head>
+
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#">CHAT MC</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if current_user.is_authenticated %}
+                    {% if current_user.rol == 'Admin' %}
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}">Admin Dashboard</a>
+                    </li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.create_user') }}">Crear Usuario</a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('employee.dashboard') }}">Mi Panel</a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if 'calendar' in request.path }}"
+                            href="{{ url_for('calendar.index') }}">
+                            <i class="fas fa-calendar-alt"></i> Calendario
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if 'training' in request.path }}"
+                            href="{{ url_for('training.index') }}">
+                            <i class="fas fa-graduation-cap"></i> Capacitaciones
+                        </a>
+                    </li>
+                    <li class="nav-item position-relative">
+                        <a class="nav-link" href="{{ url_for('chat.index') }}">
+                            Chat
+                            <span id="unread-badge"
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger {% if unread_count == 0 %}d-none{% endif %}"
+                                style="font-size: 0.6em; top: 10px !important;">
+                                {{ unread_count }}
+                            </span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn nav-link" id="darkModeToggle" title="Modo Oscuro">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                    </li>
+                    <li class="nav-item"><span class="nav-link text-warning">Hola, {{ current_user.nombre }}</span></li>
+                    <li class="nav-item"><a class="nav-link btn btn-danger btn-sm text-white ms-2"
+                            href="{{ url_for('auth.logout') }}">Salir</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div id="flash-messages-data" data-messages='{{ messages | tojson }}'></div>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Toast Container for Notifications -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
+        <div id="liveToast" class="toast align-items-center text-dark bg-warning border-0" role="alert"
+            aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <strong id="toast-sender" class="d-block mb-1">Sender</strong>
+                    <span id="toast-body">Message content...</span>
+                </div>
+                <!-- btn-close-white removed for dark text -->
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"
+        integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA=="
+        crossorigin="anonymous"></script>
+    <script>
+        // Initialize global socket
+        window.socket = io();
+
+        window.socket.on('new_message', function (msg) {
+            // If message is incoming (not from me), increment badge
+            // Note: 'is_me' is False for the recipient in the event payload
+            if (!msg.is_me) {
+                const badge = document.getElementById('unread-badge');
+                if (badge) {
+                    let count = parseInt(badge.innerText) || 0;
+                    badge.innerText = count + 1;
+                    badge.classList.remove('d-none');
+                }
+
+                // Show Toast Notification if NOT in chat route
+                // We check if the current path contains '/chat'
+                if (!window.location.pathname.includes('/chat')) {
+                    showToastNotification(msg);
+                }
+            }
+        });
+
+        function showToastNotification(msg) {
+            const toastEl = document.getElementById('liveToast');
+            const toastSender = document.getElementById('toast-sender');
+            const toastBody = document.getElementById('toast-body');
+
+            if (toastEl && toastSender && toastBody) {
+                toastSender.innerText = msg.sender_name || 'Nuevo Mensaje';
+
+                // Truncate and format message
+                let content = msg.content || (msg.filename ? '📎 Archivo adjunto' : 'Nuevo mensaje');
+                if (content.length > 50) {
+                    content = content.substring(0, 50) + '...';
+                }
+                toastBody.innerText = content;
+
+                // Show toast
+                const toast = new bootstrap.Toast(toastEl);
+                toast.show();
+
+                // Play sound
+                playNotificationSound();
+            }
+        }
+
+        // Simple debounce to ensure sound doesn't glitch if multiple messages arrive instantly
+        let lastSoundTime = 0;
+        function playNotificationSound() {
+            const now = Date.now();
+            if (now - lastSoundTime < 500) return; // Minimum 500ms between sounds
+            lastSoundTime = now;
+
+            // Use AudioContext for a simple "ding" without external files
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                try {
+                    const ctx = new AudioContext();
+                    const oscillator = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+
+                    // Pleasant "Ding" sound
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.3);
+
+                    gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+
+                    oscillator.start();
+                    oscillator.stop(ctx.currentTime + 0.3);
+                } catch (e) {
+                    console.error("Audio playback failed", e);
+                }
+            }
+        }
+
+        // --- Dark Mode Logic ---
+        const toggleBtn = document.getElementById('darkModeToggle');
+        const icon = toggleBtn.querySelector('i');
+        const body = document.body;
+
+        // Load preference
+        if (localStorage.getItem('darkMode') === 'enabled') {
+            enableDarkMode();
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            if (body.classList.contains('dark-mode')) {
+                disableDarkMode();
+            } else {
+                enableDarkMode();
+            }
+        });
+
+        function enableDarkMode() {
+            body.classList.add('dark-mode');
+            icon.classList.remove('fa-moon');
+            icon.classList.add('fa-sun');
+            localStorage.setItem('darkMode', 'enabled');
+        }
+
+        function disableDarkMode() {
+            body.classList.remove('dark-mode');
+            icon.classList.remove('fa-sun');
+            icon.classList.add('fa-moon');
+            localStorage.setItem('darkMode', 'null');
+        }
+
+        // --- Flash Messages as Toasts ---
+        const flashDiv = document.getElementById('flash-messages-data');
+        if (flashDiv) {
+            const messages = JSON.parse(flashDiv.dataset.messages);
+            messages.forEach(([category, msg]) => {
+                // Map flask categories to bootstrap colors if needed
+                // 'error' -> 'danger'
+                if (category === 'error') category = 'danger';
+
+                showToast(msg, category === 'danger' ? 'Error' : 'Notificación', category);
+            });
+        }
+
+        // Modified Helper to Reuse for Flash
+        function showToast(message, title = 'Notificación', type = 'info') {
+            const toastEl = document.getElementById('liveToast');
+            const toastSender = document.getElementById('toast-sender');
+            const toastBody = document.getElementById('toast-body');
+
+            if (toastEl && toastSender && toastBody) {
+                // Determine header color/icon based on type? 
+                // Creating a new toast instance clone would be better for multiples
+                // For now reusing the single instance, but queueing might be needed.
+                // Better: Clone the template.
+
+                const container = document.querySelector('.toast-container');
+                const newToast = toastEl.cloneNode(true);
+                newToast.id = ''; // remove id
+
+                newToast.querySelector('#toast-sender').innerText = title;
+                newToast.querySelector('#toast-body').innerText = message;
+
+                // Color tweaks
+                if (type === 'danger') {
+                    newToast.classList.remove('bg-warning');
+                    newToast.classList.add('bg-danger', 'text-white');
+                    newToast.querySelector('.btn-close').classList.add('btn-close-white');
+                } else if (type === 'success') {
+                    newToast.classList.remove('bg-warning');
+                    newToast.classList.add('bg-success', 'text-white');
+                    newToast.querySelector('.btn-close').classList.add('btn-close-white');
+                }
+
+                container.appendChild(newToast);
+                const toast = new bootstrap.Toast(newToast);
+                toast.show();
+
+                // Remove from DOM after hide
+                newToast.addEventListener('hidden.bs.toast', () => {
+                    newToast.remove();
+                })
+            }
+        }
+
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>
