@@ -94,6 +94,38 @@
         {% block content %}{% endblock %}
     </div>
 
+    <!-- Incoming Call Modal -->
+    <div class="modal fade" id="incomingCallModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+        aria-hidden="true" style="z-index: 2000;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg"
+                style="background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(10px);">
+                <div class="modal-body text-center p-5">
+                    <div class="mb-4">
+                        <div class="avatar-circle mx-auto mb-3 pulse-animation"
+                            style="width: 100px; height: 100px; background: var(--gold); font-size: 2.5rem; line-height: 100px;">
+                            <i class="fas fa-video text-white"></i>
+                        </div>
+                        <h3 class="text-white fw-bold mb-1" id="callCallerName">Nombre</h3>
+                        <p class="text-white-50 mb-0">Te está invitando a una videollamada...</p>
+                    </div>
+
+                    <div class="d-flex justify-content-center gap-4">
+                        <button type="button" class="btn btn-danger btn-lg rounded-circle p-3" data-bs-dismiss="modal"
+                            id="btnDeclineCall" style="width: 60px; height: 60px;">
+                            <i class="fas fa-phone-slash"></i>
+                        </button>
+                        <a href="#" id="btnAcceptCall"
+                            class="btn btn-success btn-lg rounded-circle p-3 incoming-call-accept"
+                            style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-video"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container for Notifications -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
         <div id="liveToast" class="toast align-items-center text-dark bg-warning border-0" role="alert"
@@ -118,8 +150,7 @@
         window.socket = io();
 
         window.socket.on('new_message', function (msg) {
-            // If message is incoming (not from me), increment badge
-            // Note: 'is_me' is False for the recipient in the event payload
+            // ... existing new_message logic ...
             if (!msg.is_me) {
                 const badge = document.getElementById('unread-badge');
                 if (badge) {
@@ -128,13 +159,69 @@
                     badge.classList.remove('d-none');
                 }
 
-                // Show Toast Notification if NOT in chat route
-                // We check if the current path contains '/chat'
                 if (!window.location.pathname.includes('/chat')) {
                     showToastNotification(msg);
                 }
             }
         });
+
+        // --- Video Call Notifications ---
+        window.socket.on('incoming_call_notification', function (data) {
+            // If I am the caller, ignore (should be handled by broadcast room logic but just in case)
+            if (data.caller_id == {{ current_user.id }
+        }) return;
+
+        // Show Modal
+        const modalEl = document.getElementById('incomingCallModal');
+        document.getElementById('callCallerName').innerText = data.caller_name;
+        const acceptBtn = document.getElementById('btnAcceptCall');
+
+        // Set Accept Button Link
+        acceptBtn.href = `/chat/video_room/${data.room_id}`;
+
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+
+        // Play Ringtone (Looping sound logic or repeated notify)
+        playRingtone();
+        });
+
+        // Ringtone Logic
+        let ringInterval;
+        function playRingtone() {
+            // Play simple sound loop
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                const ctx = new AudioContext();
+
+                // Function to play one beep
+                const beep = () => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, ctx.currentTime); // A4
+                    osc.frequency.linearRampToValueAtTime(880, ctx.currentTime + 0.1);
+
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.0);
+
+                    osc.start();
+                    osc.stop(ctx.currentTime + 1.0);
+                };
+
+                beep();
+                ringInterval = setInterval(beep, 2000); // Repeat every 2s
+
+                // Stop ring on modal close
+                const modalEl = document.getElementById('incomingCallModal');
+                modalEl.addEventListener('hidden.bs.modal', () => {
+                    clearInterval(ringInterval);
+                }, { once: true });
+            }
+        }
 
         function showToastNotification(msg) {
             const toastEl = document.getElementById('liveToast');

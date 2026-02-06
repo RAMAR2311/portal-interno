@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, request, jsonify, abort
 from flask_login import login_required, current_user
+from flask_login import login_required, current_user
 from models import db, CalendarEvent, User
+from sqlalchemy import or_
 from datetime import datetime, timezone
 import dateutil.parser
 import pytz
@@ -58,27 +60,40 @@ def get_events():
     )
     
     if target_user_id:
-        query = query.filter_by(user_id=target_user_id)
+        # If looking at someone specific, show events where they are owner OR attendee
+        query = query.filter(or_(
+            CalendarEvent.user_id == target_user_id,
+            CalendarEvent.attendees.any(id=target_user_id)
+        ))
         # Privacy Logic: If looking at someone else
         is_owner = (current_user.id == target_user_id)
     else:
-        # Defaults to current user? Or error? Or all?
-        # Specification says "Si yo consulto el calendario de otro..." implies default is mine
-        # Let's default to current user if not specified
-        query = query.filter_by(user_id=current_user.id)
+        # Defaults to current user. Show events where I am owner OR attendee
+        query = query.filter(or_(
+            CalendarEvent.user_id == current_user.id,
+            CalendarEvent.attendees.any(id=current_user.id)
+        ))
         is_owner = True
         
     events = query.all()
     results = []
     
     for event in events:
-        # Privacy Redaction
-        # If I am not the owner AND (Event is Private OR Privacy Rule applies to everything?)
-        # Specification: "Si yo... y el evento es is_private=True o simplemente no soy el dueño..."
-        # Wait, "o simplemente no soy el dueño" suggests I ALWAYS see generic "Ocupado" for others?
-        # "el title debe devolverse genéricamente como 'Ocupado' y la descripción oculta."
+        # Visibility Logic
+        # I can see details if:
+        # 1. I am the creator
+        # 2. I am an attendee
+        # 3. I am looking at my own calendar (implied by 1 & 2 usually, but handled by filter)
+        # 4. It's public and looking at someone else (Shows Ocupado but obscured title? No, obscured title unless private)
         
-        if is_owner:
+        am_i_creator = (event.user_id == current_user.id)
+        am_i_attendee = (current_user in event.attendees)
+        can_see_details = am_i_creator or am_i_attendee
+        
+        # Prepare attendees list for frontend
+        attendees_data = [{'id': u.id, 'nombre': u.nombre} for u in event.attendees]
+
+        if can_see_details:
             results.append({
                 'id': event.id,
                 'title': event.title,
@@ -88,38 +103,30 @@ def get_events():
                 'description': event.description,
                 'is_private': event.is_private,
                 'extendedProps': {
-                    'is_mine': True
+                    'is_mine': am_i_creator, # Only creator can edit fully usually
+                    'notes': 'You are an attendee' if am_i_attendee and not am_i_creator else '',
+                    'attendees': attendees_data
                 }
             })
         else:
-            # Viewing someone else
+            # Viewing someone else's event where I am NOT involved
             if event.is_private:
-                # Private events definitely obscured
                 title = "Ocupado (Privado)"
             else:
-                 # Public events from others -> Spec says "o simplemente no soy el dueño" -> "Ocupado"
-                 # Let's follow spec strictly: "Solo el dueño ve los detalles reales."
-                 title = "Ocupado"
+                title = "Ocupado"
                  
             results.append({
                 'id': event.id,
                 'title': title,
                 'start': event.start.isoformat(),
                 'end': event.end.isoformat(),
-                'type': 'Ocupado', # Ovwrrite type? Or keep 'Reunión' vs 'Fuera'? 
-                # "el title debe devolverse ... como Ocupado ... descripción oculta"
-                # Type might be useful to know IF they are 'Fuera de Oficina' vs just 'Reunión'?
-                # Let's hide type too to be safe/generic as requested, OR maybe show 'Fuera de Oficina' is useful info?
-                # User prompted: "mostrar disponibilidad... para saber cuándo pueden hablar"
-                # Knowing 'Fuera de Oficina' is vital. Knowing 'Reunión' vs 'Ocupado' is less vital.
-                # Let's preserve type if it is 'Fuera de Oficina', otherwise 'Ocupado'.
-                
                 'type': event.type if event.type == 'Fuera de Oficina' else 'Ocupado',
                 'description': '', # Hidden
                 'is_private': event.is_private,
                 'color': '#6c757d', # Gray
                 'extendedProps': {
-                    'is_mine': False
+                    'is_mine': False,
+                    'attendees': [] # Hide attendees too? Yes for privacy
                 }
             })
 
@@ -163,6 +170,12 @@ def create_event():
         is_private=is_private
     )
     
+    # Handle Attendees
+    attendee_ids = data.get('attendees', [])
+    if attendee_ids:
+        users = User.query.filter(User.id.in_(attendee_ids)).all()
+        new_event.attendees = users
+    
     db.session.add(new_event)
     db.session.commit()
     
@@ -199,6 +212,11 @@ def update_event(event_id):
             event.end = end
         except ValueError:
              return jsonify({'error': 'Invalid date format'}), 400
+    
+    if 'attendees' in data:
+        attendee_ids = data['attendees']
+        users = User.query.filter(User.id.in_(attendee_ids)).all()
+        event.attendees = users
              
     db.session.commit()
     return jsonify({'success': True})

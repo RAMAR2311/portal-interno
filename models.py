@@ -133,6 +133,12 @@ class Comunicado(db.Model):
     # Relationship to know who posted it
     author = db.relationship('User', backref='comunicados', lazy=True)
 
+# Association table for Event Attendees
+event_attendees = db.Table('event_attendees',
+    db.Column('event_id', db.Integer, db.ForeignKey('calendar_event.id'), primary_key=True),
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True)
+)
+
 class CalendarEvent(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -145,4 +151,6 @@ class CalendarEvent(db.Model):
     
     # Relationship
     user = db.relationship('User', backref='events', lazy=True)
+    attendees = db.relationship('User', secondary=event_attendees, lazy='subquery',
+        backref=db.backref('attending_events', lazy=True))
 

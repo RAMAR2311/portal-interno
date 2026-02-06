@@ -130,6 +130,15 @@
                     </div>
 
                     <div class="form-floating mb-3">
+                        <select class="form-select" id="eventAttendees" multiple style="height: 100px;">
+                            {% for u in users %}
+                            <option value="{{ u.id }}">{{ u.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <label for="eventAttendees">Invitados (Ctrl+Click para selección múltiple)</label>
+                    </div>
+
+                    <div class="form-floating mb-3">
                         <textarea class="form-control" id="eventDesc" placeholder="Descripción"
                             style="height: 100px"></textarea>
                         <label for="eventDesc">Descripción (Opcional)</label>
@@ -165,24 +174,7 @@
     // Global function for Sidebar Selection
     let selectedUserId;
     let calendarInstance = null;
-    let currentUserId;
-
-    function selectUser(element) {
-        let userId = parseInt(element.dataset.userId);
-        selectedUserId = userId;
-
-        // Update visual active state
-        document.querySelectorAll('.user-card').forEach(el => el.classList.remove('active'));
-        element.classList.add('active');
-
-        // Refetch calendar
-        if (calendarInstance) {
-            calendarInstance.refetchEvents();
-        }
-
-        // Update Create Button State
-        document.getElementById('btnCreateEvent').disabled = (userId !== currentUserId);
-    }
+    let currentUserId = {{ current_user.id }};
 
     document.addEventListener('DOMContentLoaded', function () {
         var calendarEl = document.getElementById('calendar');
@@ -199,153 +191,212 @@
         var eventType = document.getElementById('eventType');
         var eventDesc = document.getElementById('eventDesc');
         var eventPrivate = document.getElementById('eventPrivate');
+        var eventAttendees = document.getElementById('eventAttendees');
 
-        calendarInstance = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'timeGridWeek',
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay'
-            },
-            themeSystem: 'bootstrap5',
-            locale: 'es',
-            buttonText: { today: 'Hoy', month: 'Mes', week: 'Semana', day: 'Día' },
-            slotMinTime: '06:00:00',
-            slotMaxTime: '22:00:00',
-            allDaySlot: true,
-            nowIndicator: true,
-            height: 'auto',
-            navLinks: true,
-            editable: true,
-            selectable: true,
-            dayMaxEvents: true,
+        // Initialize with current user
+        selectedUserId = currentUserId;
+        initCalendar(selectedUserId);
 
-            // Allow drop/resize only for my events
-            eventAllow: function (dropInfo, draggedEvent) {
-                return draggedEvent.extendedProps.is_mine;
-            },
+        window.selectUser = function (element) {
+            let userId = parseInt(element.dataset.userId);
+            if (selectedUserId === userId) return;
 
-            // --- Custom Event Rendering ---
-            eventClassNames: function (arg) {
-                return ['fc-event-custom'];
-            },
+            selectedUserId = userId;
 
-            eventDidMount: function (info) {
-                const event = info.event;
-                const el = info.el;
-                const props = event.extendedProps;
+            // Update visual active state
+            document.querySelectorAll('.user-card').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
 
-                // 1. Icon Injection
-                let iconClass = 'fa-calendar-alt';
-                let borderColor = 'var(--gold)';
+            // Update Create Button State
+            document.getElementById('btnCreateEvent').disabled = (userId !== currentUserId);
 
-                if (props.type === 'Reunión') iconClass = 'fa-users';
-                else if (props.type === 'Fuera de Oficina') { iconClass = 'fa-plane'; borderColor = 'var(--pink)'; }
-                else if (props.type === 'Recordatorio') iconClass = 'fa-bell';
-                else if (props.type === 'Ocupado') { iconClass = 'fa-clock'; borderColor = '#6c757d'; }
+            // Re-initialize calendar completely to ensure bindings
+            initCalendar(userId);
+        };
 
-                // Override border color if set in event props (from backend logic)
-                // Backend sent 'color' prop. Let's use it for border.
-                if (event.backgroundColor) {
-                    // We are hijacking backgroundColor from backend to mean "Type Color"
-                    // Front end CSS uses border-left.
-                    el.style.borderLeftColor = event.backgroundColor;
-                    el.style.backgroundColor = 'rgba(255,255,255,0.95)'; // force white glass
-                    if (document.body.classList.contains('dark-mode')) {
-                        el.style.backgroundColor = '#333';
+        function initCalendar(userId) {
+            if (calendarInstance) {
+                calendarInstance.destroy();
+            }
+
+            calendarInstance = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'timeGridWeek',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                themeSystem: 'bootstrap5',
+                locale: 'es',
+                buttonText: { today: 'Hoy', month: 'Mes', week: 'Semana', day: 'Día' },
+                slotMinTime: '06:00:00',
+                slotMaxTime: '22:00:00',
+                allDaySlot: true,
+                nowIndicator: true,
+                height: 'auto',
+                navLinks: true,
+                editable: true,
+                selectable: true,
+                dayMaxEvents: true,
+
+                // Allow drop/resize only for my events
+                eventAllow: function (dropInfo, draggedEvent) {
+                    return draggedEvent.extendedProps.is_mine;
+                },
+
+                // --- Custom Event Rendering ---
+                eventClassNames: function (arg) {
+                    return ['fc-event-custom'];
+                },
+
+                eventDidMount: function (info) {
+                    const event = info.event;
+                    const el = info.el;
+                    const props = event.extendedProps;
+
+                    // 1. Icon Injection
+                    let iconClass = 'fa-calendar-alt';
+                    let borderColor = 'var(--gold)';
+
+                    if (props.type === 'Reunión') iconClass = 'fa-users';
+                    else if (props.type === 'Fuera de Oficina') { iconClass = 'fa-plane'; borderColor = 'var(--pink)'; }
+                    else if (props.type === 'Recordatorio') iconClass = 'fa-bell';
+                    else if (props.type === 'Ocupado') { iconClass = 'fa-clock'; borderColor = '#6c757d'; }
+
+                    // Override border color if set in event props (from backend logic logic)
+                    if (event.backgroundColor) {
+                        el.style.borderLeftColor = event.backgroundColor;
+                        el.style.backgroundColor = 'rgba(255,255,255,0.95)';
+                        if (document.body.classList.contains('dark-mode')) {
+                            el.style.backgroundColor = '#333';
+                        }
                     }
-                }
 
-                // Inject content
-                let content = `
-                    <div class="fc-event-icon"><i class="fas ${iconClass}" style="color:${event.backgroundColor}"></i></div>
-                    <div class="fc-event-title">${event.title}</div>
-                `;
-                el.innerHTML = content;
+                    // Inject content
+                    let content = `
+                        <div class="fc-event-icon"><i class="fas ${iconClass}" style="color:${event.backgroundColor}"></i></div>
+                        <div class="fc-event-title">${event.title}</div>
+                    `;
+                    el.innerHTML = content;
 
-                // 2. Tippy.js Tooltip
-                tippy(el, {
-                    content: `
-                        <div class="text-start">
-                            <strong class="d-block mb-1">${event.title}</strong>
-                            <div class="small mb-1"><i class="far fa-clock me-1"></i> ${event.start ? event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''} - ${event.end ? event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</div>
-                            ${props.description ? `<div class="small text-muted border-top pt-1 mt-1">${props.description}</div>` : ''}
-                            ${props.is_private ? '<div class="badge bg-secondary mt-1"><i class="fas fa-lock me-1"></i> Privado</div>' : ''}
-                        </div>
-                    `,
-                    allowHTML: true,
-                    theme: 'light-border',
-                    animation: 'scale',
-                });
-            },
+                    // 2. Tippy.js Tooltip
+                    let attendeesHtml = '';
+                    if (props.attendees && props.attendees.length > 0) {
+                        attendeesHtml = '<div class="small mt-1 text-muted border-top pt-1"><i class="fas fa-user-friends me-1"></i> ' +
+                            props.attendees.map(a => a.nombre).join(', ') + '</div>';
+                    }
 
-            // Load Events
-            events: function (fetchInfo, successCallback, failureCallback) {
-                var url = `/calendar/api/events?start=${fetchInfo.startStr}&end=${fetchInfo.endStr}&user_id=${selectedUserId}`;
-
-                fetch(url)
-                    .then(response => response.json())
-                    .then(data => {
-                        var events = data.map(evt => {
-                            // Backend sends colors. We map them to our variables for the border logic in eventDidMount
-                            if (!evt.extendedProps.is_mine) {
-                                evt.backgroundColor = '#6c757d';
-                                evt.editable = false;
-                            } else {
-                                if (evt.type === 'Fuera de Oficina') evt.backgroundColor = 'var(--pink)';
-                                else evt.backgroundColor = 'var(--gold)';
-                            }
-                            return evt;
-                        });
-                        successCallback(events);
-                    })
-                    .catch(error => {
-                        console.error('Error fetching events:', error);
-                        failureCallback(error);
+                    tippy(el, {
+                        content: `
+                            <div class="text-start">
+                                <strong class="d-block mb-1">${event.title}</strong>
+                                <div class="small mb-1"><i class="far fa-clock me-1"></i> ${event.start ? event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''} - ${event.end ? event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</div>
+                                ${props.description ? `<div class="small text-muted border-top pt-1 mt-1">${props.description}</div>` : ''}
+                                ${attendeesHtml}
+                                ${props.is_private ? '<div class="badge bg-secondary mt-1"><i class="fas fa-lock me-1"></i> Privado</div>' : ''}
+                            </div>
+                        `,
+                        allowHTML: true,
+                        theme: 'light-border',
+                        animation: 'scale',
                     });
-            },
+                },
 
-            // Click on empty space
-            select: function (info) {
-                if (selectedUserId !== currentUserId) {
-                    showToast('Solo puedes crear eventos en tu propio calendario.', 'Aviso', 'warning');
-                    calendarInstance.unselect();
-                    return;
-                }
+                // Load Events
+                events: function (fetchInfo, successCallback, failureCallback) {
+                    var url = `/calendar/api/events?start=${fetchInfo.startStr}&end=${fetchInfo.endStr}&user_id=${userId}`; // Use passed userId
 
-                resetModal();
-                modalTitle.innerText = 'Nuevo Evento';
-                eventStart.value = toLocalISO(info.start);
-                eventEnd.value = toLocalISO(info.end);
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => {
+                            var events = data.map(evt => {
+                                if (!evt.extendedProps.is_mine) {
+                                    // Being invited counts as "mine" enough to see color, but maybe DIFFERENT color?
+                                    // Backend sets is_mine=True if creator. 
+                                    // If I am attendee but not creator, is_mine is FALSE in backend logic? No let's check.
+                                    // Backend: 'is_mine': am_i_creator
+                                    // So if attendee, is_mine is false, BUT I can see details.
+                                    // If I can see details (title != Ocupado), I should see nice colors.
 
-                btnDelete.classList.add('d-none');
-                eventModal.show();
-            },
+                                    if (evt.title === "Ocupado" || evt.title === "Ocupado (Privado)") {
+                                        evt.backgroundColor = '#6c757d';
+                                        evt.editable = false;
+                                    } else {
+                                        // It's a meeting I'm invited to
+                                        evt.backgroundColor = 'var(--gold)'; // Or blue?
+                                        evt.editable = false; // Generally attendees can't move events
+                                    }
+                                } else {
+                                    if (evt.type === 'Fuera de Oficina') evt.backgroundColor = 'var(--pink)';
+                                    else evt.backgroundColor = 'var(--gold)';
+                                }
+                                return evt;
+                            });
+                            successCallback(events);
+                        })
+                        .catch(error => {
+                            console.error('Error fetching events:', error);
+                            failureCallback(error);
+                        });
+                },
 
-            // Click on Event
-            eventClick: function (info) {
-                var props = info.event.extendedProps;
-                if (!props.is_mine) return;
+                // Click on empty space
+                select: function (info) {
+                    if (userId !== currentUserId) {
+                        showToast('Solo puedes crear eventos en tu propio calendario.', 'Aviso', 'warning');
+                        calendarInstance.unselect();
+                        return;
+                    }
 
-                resetModal();
-                modalTitle.innerText = 'Editar Evento';
-                eventId.value = info.event.id;
-                eventTitle.value = info.event.title;
-                eventStart.value = toLocalISO(info.event.start);
-                eventEnd.value = toLocalISO(info.event.end);
-                eventType.value = info.event.extendedProps.type || 'Reunión';
-                eventDesc.value = info.event.extendedProps.description;
-                eventPrivate.checked = info.event.extendedProps.is_private;
+                    resetModal();
+                    modalTitle.innerText = 'Nuevo Evento';
+                    eventStart.value = toLocalISO(info.start);
+                    eventEnd.value = toLocalISO(info.end);
 
-                btnDelete.classList.remove('d-none');
-                eventModal.show();
-            },
+                    btnDelete.classList.add('d-none');
+                    eventModal.show();
+                },
 
-            eventDrop: function (info) { updateEventDates(info.event); },
-            eventResize: function (info) { updateEventDates(info.event); }
-        });
+                // Click on Event
+                eventClick: function (info) {
+                    var props = info.event.extendedProps;
+                    // Allow edit if I am creator
+                    if (!props.is_mine) {
+                        // Just show details? Tippy handles it.
+                        // If I am attendee, maybe show modal read-only? 
+                        // For now, return to prevent editing.
+                        return;
+                    }
 
-        calendarInstance.render();
+                    resetModal();
+                    modalTitle.innerText = 'Editar Evento';
+                    eventId.value = info.event.id;
+                    eventTitle.value = info.event.title;
+                    eventStart.value = toLocalISO(info.event.start);
+                    eventEnd.value = toLocalISO(info.event.end);
+                    eventType.value = info.event.extendedProps.type || 'Reunión';
+                    eventDesc.value = info.event.extendedProps.description;
+                    eventPrivate.checked = info.event.extendedProps.is_private;
+
+                    // Pre-select attendees
+                    if (props.attendees) {
+                        // multi select needs array of strings usually
+                        const ids = props.attendees.map(a => a.id.toString());
+                        Array.from(eventAttendees.options).forEach(option => {
+                            option.selected = ids.includes(option.value);
+                        });
+                    }
+
+                    btnDelete.classList.remove('d-none');
+                    eventModal.show();
+                },
+
+                eventDrop: function (info) { updateEventDates(info.event); },
+                eventResize: function (info) { updateEventDates(info.event); }
+            });
+
+            calendarInstance.render();
+        }
 
         // --- Helpers ---
         function toLocalISO(date) {
@@ -359,15 +410,14 @@
             eventDesc.value = '';
             eventPrivate.checked = false;
             eventType.value = 'Reunión';
+            // Reset attendees
+            eventAttendees.selectedIndex = -1;
         }
 
         document.getElementById('btnCreateEvent').addEventListener('click', function () {
             if (selectedUserId !== currentUserId) {
-                // Auto switch to me?
-                // Or just warn?
-                // Plan: Just warn or force switch. Let's force switch for better UX.
                 var myCard = document.querySelector(`.user-card[data-user-id="${currentUserId}"]`);
-                if (myCard) selectUser(currentUserId, myCard);
+                if (myCard) selectUser(myCard); // Uses the global wrapper
             }
 
             var now = new Date();
@@ -395,13 +445,17 @@
             var method = id ? 'PUT' : 'POST';
             var url = id ? `/calendar/api/events/${id}` : '/calendar/api/events';
 
+            // Get selected attendees
+            var selectedAttendees = Array.from(eventAttendees.selectedOptions).map(opt => opt.value);
+
             var payload = {
                 title: eventTitle.value,
                 start: eventStart.value,
                 end: eventEnd.value,
                 type: eventType.value,
                 description: eventDesc.value,
-                is_private: eventPrivate.checked
+                is_private: eventPrivate.checked,
+                attendees: selectedAttendees
             };
 
             fetch(url, {

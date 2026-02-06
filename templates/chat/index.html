@@ -159,64 +159,8 @@
 
 {% endblock %}
 
-{% block scripts %}
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-
-<!-- Video Call Modal -->
-<div class="modal fade" id="videoCallModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content bg-dark text-white">
-            <div class="modal-header border-0">
-                <h5 class="modal-title">Videollamada</h5>
-            </div>
-            <div class="modal-body text-center p-0 position-relative" style="height: 500px; background: #000;">
-
-                <!-- Remote Video (Full Size) -->
-                <video id="remote-video" autoplay playsinline class="w-100 h-100" style="object-fit: cover;"></video>
-
-                <!-- Local Video (PIP) -->
-                <video id="local-video" autoplay playsinline muted
-                    class="position-absolute bottom-0 end-0 m-3 border border-white"
-                    style="width: 150px; height: 110px; object-fit: cover; border-radius: 8px; z-index: 10;">
-                </video>
-
-                <!-- Status Overlay -->
-                <div id="video-status" class="position-absolute top-50 start-50 translate-middle">
-                    <div class="spinner-border text-light mb-2" role="status"></div>
-                    <div id="video-status-text">Conectando...</div>
-                </div>
-
-                <!-- Incoming Call Overlay -->
-                <div id="incoming-call-overlay"
-                    class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center bg-dark"
-                    style="z-index: 20;">
-                    <div class="mb-4">
-                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
-                            style="width: 80px; height: 80px;">
-                            <i class="fas fa-video fa-2x"></i>
-                        </div>
-                        <h4 id="caller-name">Usuario</h4>
-                        <p class="text-muted">te está llamando...</p>
-                    </div>
-                    <div class="d-flex gap-4">
-                        <button class="btn btn-danger rounded-circle p-3" onclick="rejectCall()">
-                            <i class="fas fa-phone-slash"></i>
-                        </button>
-                        <button class="btn btn-success rounded-circle p-3" onclick="acceptCall()">
-                            <i class="fas fa-video"></i>
-                        </button>
-                    </div>
-                </div>
-
-            </div>
-            <div class="modal-footer border-0 justify-content-center">
-                <button type="button" class="btn btn-danger rounded-pill px-4" onclick="endCall()">
-                    <i class="fas fa-phone-slash me-2"></i> Finalizar Llamada
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+{# Remove PeerJS Import #}
+{# Remove Video Modal HTML #}
 
 <script type="module">
     import { EmojiButton } from 'https://cdn.skypack.dev/@joeattardi/emoji-button@4.6.4';
@@ -226,196 +170,31 @@
     let currentChatId = null;
     let picker = null; // Global picker instance
 
-    // --- PeerJS & Video Logic ---
-    let myPeerId = null;
-    let peer = null;
-    let currentCall = null;
-    let localStream = null;
-    let incomingCallData = null;
-    let videoModalInstance = null;
-
-    // Initialize Peer
-    try {
-        peer = new Peer(undefined, {
-            debug: 2
-        });
-
-        peer.on('open', (id) => {
-            console.log('My Peer ID is: ' + id);
-            myPeerId = id;
-        });
-
-        peer.on('call', (call) => {
-            console.log('Receiving PeerJS call from:', call.peer);
-
-            if (currentCall) {
-                console.log('Already in a call, rejecting new one');
-                call.close();
-                return;
-            }
-
-            if (localStream) {
-                call.answer(localStream);
-                handleCallStream(call);
-            } else {
-                console.warn('Received PeerJS call but localStream not ready.');
-            }
-        });
-
-    } catch (e) {
-        console.error('PeerJS init failed', e);
-    }
-
+    // --- New Video Call Logic ---
     window.startVideoCall = function () {
-        if (!currentChatId || currentChatType !== 'user') {
-            console.error('Cant start call: no user selected');
-            return;
-        }
+        if (!currentChatId) return;
 
-        console.log('Initiating call to user:', currentChatId);
-
-        const modalEl = document.getElementById('videoCallModal');
-        videoModalInstance = new bootstrap.Modal(modalEl);
-        videoModalInstance.show();
-
-        document.getElementById('video-status').classList.remove('d-none');
-        document.getElementById('video-status-text').innerText = "Iniciando cámara...";
-        document.getElementById('incoming-call-overlay').classList.add('d-none');
-        document.getElementById('remote-video').srcObject = null;
-
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then((stream) => {
-                console.log('Local stream acquired');
-                localStream = stream;
-                const localVideo = document.getElementById('local-video');
-                localVideo.srcObject = stream;
-                localVideo.play().catch(e => console.warn('Local video play failed:', e));
-
-                document.getElementById('video-status-text').innerText = "Llamando...";
-
-                socket.emit('initiate_call', {
-                    recipient_id: currentChatId,
-                    peer_id: myPeerId
-                });
-            })
-            .catch((err) => {
-                console.error('Failed to get local stream', err);
-                alert('No se pudo acceder a la cámara o micrófono. Por favor, revisa los permisos.');
-                videoModalInstance.hide();
-            });
-    };
-
-    window.acceptCall = function () {
-        console.log('Accepting incoming call...');
-        document.getElementById('incoming-call-overlay').classList.add('d-none');
-        document.getElementById('video-status').classList.remove('d-none');
-        document.getElementById('video-status-text').innerText = "Conectando...";
-
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then((stream) => {
-                console.log('Receiver local stream acquired');
-                localStream = stream;
-                const localVideo = document.getElementById('local-video');
-                localVideo.srcObject = stream;
-                localVideo.play().catch(e => console.warn('Local video play failed:', e));
-
-                if (incomingCallData && incomingCallData.peer_id) {
-                    console.log('Calling back Peer ID:', incomingCallData.peer_id);
-                    const call = peer.call(incomingCallData.peer_id, stream);
-                    handleCallStream(call);
-                } else {
-                    console.error('Incoming call data missing peer_id');
-                    endCall();
-                }
-            })
-            .catch((err) => {
-                console.error('Receiver media error:', err);
-                alert('Error al acceder a los dispositivos de audio/video.');
-                endCall();
-            });
-    };
-
-    window.rejectCall = function () {
-        console.log('Call rejected by user');
-        endCall();
-    };
-
-    window.endCall = function () {
-        console.log('Ending call...');
-        if (currentCall) {
-            currentCall.close();
-        }
-        if (localStream) {
-            localStream.getTracks().forEach(track => {
-                track.stop();
-                console.log('Track stopped:', track.kind);
-            });
-        }
-
-        const targetId = currentChatId || (incomingCallData ? incomingCallData.sender_id : null);
-        if (targetId) {
-            console.log('Notifying other end (', targetId, ') that call ended');
-            socket.emit('end_call', { recipient_id: targetId });
-        }
-
-        const modalEl = document.getElementById('videoCallModal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) {
-            modal.hide();
-        }
-
-        document.getElementById('remote-video').srcObject = null;
-        document.getElementById('local-video').srcObject = null;
-
-        currentCall = null;
-        localStream = null;
-        incomingCallData = null;
-        videoModalInstance = null;
-    };
-
-    function handleCallStream(call) {
-        currentCall = call;
-
-        call.on('stream', (remoteStream) => {
-            console.log('Remote stream received');
-            document.getElementById('video-status').classList.add('d-none');
-            const remoteVideo = document.getElementById('remote-video');
-            remoteVideo.srcObject = remoteStream;
-            remoteVideo.play().catch(e => console.warn('Remote video play failed:', e));
+        // Notify others
+        socket.emit('start_group_call', {
+            group_id: currentChatType === 'group' ? currentChatId : null,
+            recipient_id: currentChatType === 'user' ? currentChatId : null
         });
 
-        call.on('close', () => {
-            console.log('PeerJS call closed event');
-            endCall();
-        });
+        // Navigate to room
+        // Consistent naming with backend
+        let roomId;
+        const myId = {{ current_user.id }
+    };
 
-        call.on('error', (err) => {
-            console.error('PeerJS call error:', err);
-            endCall();
-        });
+    if (currentChatType === 'group') {
+        roomId = `video_group_${currentChatId}`;
+    } else {
+        roomId = `video_user_${myId}_${currentChatId}`;
     }
 
-    // --- Socket Listeners for Video ---
-    socket.on('incoming_call', (data) => {
-        console.log('Socket: incoming_call from', data.sender_name, 'PeerID:', data.peer_id);
-        incomingCallData = data;
+    window.location.href = `/chat/video_room/${roomId}`;
+    };
 
-        const modalEl = document.getElementById('videoCallModal');
-        videoModalInstance = new bootstrap.Modal(modalEl);
-        videoModalInstance.show();
-
-        document.getElementById('incoming-call-overlay').classList.remove('d-none');
-        document.getElementById('incoming-call-overlay').classList.add('d-flex');
-        document.getElementById('video-status').classList.add('d-none');
-        document.getElementById('caller-name').innerText = data.sender_name;
-        document.getElementById('remote-video').srcObject = null;
-        document.getElementById('local-video').srcObject = null;
-    });
-
-    socket.on('call_ended', () => {
-        console.log('Socket: call_ended received');
-        endCall();
-    });
 
 
     // Initialize Picker immediately
@@ -506,7 +285,8 @@
                 document.getElementById('chat-header').appendChild(videoBtn);
             }
 
-            if (currentChatType === 'user') {
+            // Show video button for both users and groups
+            if (currentChatType === 'user' || currentChatType === 'group') {
                 videoBtn.classList.remove('d-none');
             } else {
                 videoBtn.classList.add('d-none');

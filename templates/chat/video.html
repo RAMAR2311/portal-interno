@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .video-call-container {
+        height: 85vh;
+        display: flex;
+        flex-direction: column;
+        background: #111;
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .video-grid {
+        flex: 1;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 10px;
+        padding: 10px;
+        background: #000;
+        align-content: center;
+    }
+
+    .video-card {
+        background: #222;
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+        aspect-ratio: 16/9;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .video-card video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        /* Cover usually looks better, but might crop. 'contain' if full frame needed. */
+        transform: scaleX(-1);
+        /* Mirror effect */
+    }
+
+    .video-label {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 0.8em;
+    }
+
+    .call-controls {
+        height: 80px;
+        background: #1a1a1a;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .control-btn {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: none;
+        background: #333;
+        color: white;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .control-btn:hover {
+        background: #444;
+        transform: scale(1.1);
+    }
+
+    .control-btn.active {
+        background: var(--gold);
+        color: black;
+    }
+
+    .control-btn.hangup {
+        background: #dc3545;
+    }
+
+    .control-btn.hangup:hover {
+        background: #c82333;
+    }
+
+    /* Loading Overlay */
+    #loadingOverlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #111;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        color: #fff;
+    }
+</style>
+
+<div class="container-fluid px-0 h-100">
+    <div class="video-call-container">
+
+        <div id="loadingOverlay">
+            <div class="spinner-border text-light mb-3" role="status"></div>
+            <h5>Conectando a la sala...</h5>
+        </div>
+
+        <div class="video-grid" id="videoGrid">
+            <!-- Local User -->
+            <div class="video-card">
+                <video id="localVideo" autoplay playsinline muted></video>
+                <div class="video-label">Tú</div>
+            </div>
+        </div>
+
+        <div class="call-controls">
+            <button class="control-btn" id="btnToggleAudio" title="Mute/Unmute">
+                <i class="fas fa-microphone"></i>
+            </button>
+            <button class="control-btn" id="btnToggleVideo" title="Video On/Off">
+                <i class="fas fa-video"></i>
+            </button>
+            <button class="control-btn hangup" id="btnHangup" title="Colgar">
+                <i class="fas fa-phone-slash"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+    const ROOM_ID = "{{ room_id }}";
+    const CURRENT_USER_ID = {{ current_user.id }};
+    const CURRENT_USER_NAME = "{{ current_user.nombre }}";
+
+    // WebRTC Config (Using public STUN servers for fallback)
+    const ICE_SERVERS = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' }
+        ]
+    };
+
+    const socket = io();
+    const videoGrid = document.getElementById('videoGrid');
+    const localVideo = document.getElementById('localVideo');
+    const peers = {}; // sid -> { peer: RTCPeerConnection, name: string }
+
+    let localStream;
+
+    // --- Media Setup ---
+    async function startMedia() {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localVideo.srcObject = localStream;
+
+            // Wait for socket connect? It's global in base.html but we re-init specific logic here?
+            // Actually socket is already connected from base.html usually.
+            // Let's just emit join.
+            document.getElementById('loadingOverlay').style.display = 'none';
+            socket.emit('join_video_room', { room_id: ROOM_ID });
+
+        } catch (err) {
+            console.error('Error accessing media', err);
+            alert('No se pudo acceder a la cámara/micrófono. Verifica permisos.');
+        }
+    }
+
+    // --- Socket Events ---
+
+    socket.on('call_error', data => {
+        alert(data.message);
+        window.location.href = '/chat';
+    });
+
+    socket.on('all_users', (users) => {
+        // 'users' is list of socket IDs of people ALREADY in the room.
+        // We are the new joiner, so WE initiate calls to them.
+        users.forEach(userID => {
+            const peer = createPeer(userID, true); // true = initiator
+            peers[userID] = { peer: peer };
+        });
+    });
+
+    socket.on('user_connected', payload => {
+        // Someone else joined. Wait for their offer.
+        // Usually Mesh logic: Newcomer offers.
+        // So we don't do anything here except maybe toast.
+        // We receive signal shortly.
+        console.log("User connected (waiting for signal):", payload);
+    });
+
+    socket.on('signal_received', async (data) => {
+        const senderID = data.sender;
+        const payload = data.payload;
+
+        // Ensure peer exists (if not initiator, we create it when receiving offer)
+        if (!peers[senderID]) {
+            const peer = createPeer(senderID, false);
+            peers[senderID] = { peer: peer, name: data.sender_name };
+        }
+
+        const item = peers[senderID];
+        const p = item.peer;
+
+        if (payload.sdp) {
+            await p.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+            if (payload.sdp.type === 'offer') {
+                const answer = await p.createAnswer();
+                await p.setLocalDescription(answer);
+
+                socket.emit('signal', {
+                    target: senderID,
+                    payload: { sdp: p.localDescription }
+                });
+            }
+        } else if (payload.candidate) {
+            try {
+                await p.addIceCandidate(new RTCIceCandidate(payload.candidate));
+            } catch (e) {
+                console.error("Error adding candidate", e);
+            }
+        }
+    });
+
+    socket.on('user_left', data => {
+        const sid = data.sid;
+        if (peers[sid]) {
+            peers[sid].peer.close();
+            delete peers[sid];
+            removeVideo(sid);
+        }
+    });
+
+    // --- WebRTC Logic ---
+
+    function createPeer(targetSid, initiator) {
+        const peer = new RTCPeerConnection(ICE_SERVERS);
+
+        // Add local tracks
+        localStream.getTracks().forEach(track => peer.addTrack(track, localStream));
+
+        // Handle ICE
+        peer.onicecandidate = e => {
+            if (e.candidate) {
+                socket.emit('signal', {
+                    target: targetSid,
+                    payload: { candidate: e.candidate }
+                });
+            }
+        };
+
+        // Handle Tracks (Remote Stream)
+        peer.ontrack = e => {
+            addVideo(targetSid, e.streams[0]);
+        };
+
+        // Handle Negotiation (Only initiator)
+        if (initiator) {
+            peer.onnegotiationneeded = async () => {
+                try {
+                    const offer = await peer.createOffer();
+                    await peer.setLocalDescription(offer);
+                    socket.emit('signal', {
+                        target: targetSid,
+                        payload: { sdp: peer.localDescription }
+                    });
+                } catch (err) {
+                    console.error("Negotiation error", err);
+                }
+            };
+        }
+
+        return peer;
+    }
+
+    function addVideo(userId, stream) {
+        const existing = document.getElementById(`video-container-${userId}`);
+        if (existing) return; // already rendered
+
+        const card = document.createElement('div');
+        card.className = 'video-card';
+        card.id = `video-container-${userId}`;
+
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.playsInline = true;
+        video.srcObject = stream;
+
+        const label = document.createElement('div');
+        label.className = 'video-label';
+        // We try to get name from peers obj if set, otherwise "Participante"
+        const name = (peers[userId] && peers[userId].name) ? peers[userId].name : 'Participante';
+        label.innerText = name;
+
+        card.appendChild(video);
+        card.appendChild(label);
+        videoGrid.appendChild(card);
+    }
+
+    function removeVideo(userId) {
+        const el = document.getElementById(`video-container-${userId}`);
+        if (el) el.remove();
+    }
+
+    // --- UI Controls ---
+
+    document.getElementById('btnHangup').addEventListener('click', () => {
+        socket.emit('leave_video_room', { room_id: ROOM_ID });
+        localStream.getTracks().forEach(track => track.stop());
+        window.location.href = '/chat';
+    });
+
+    // Initialize
+    startMedia();
+
+    // Cleanup on window unload
+    window.addEventListener('beforeunload', () => {
+        socket.emit('leave_video_room', { room_id: ROOM_ID });
+    });
+
+</script>
+{% endblock %}
