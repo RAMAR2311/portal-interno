@@ -7,8 +7,8 @@ while ! nc -z db 5432; do
 done
 echo "PostgreSQL listo"
 
-# Crear las tablas automáticamente
-python3 -c "from app import app, db; ctx=app.app_context(); ctx.push(); db.create_all()"
+# Crear las tablas automáticamente (Versión corregida para una sola línea)
+python3 -c "from app import app, db; app.app_context().push(); db.create_all()"
 
 # Crear el admin por defecto
 python3 seed_admin.py
