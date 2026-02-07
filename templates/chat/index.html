@@ -159,9 +159,7 @@
 
 {% endblock %}
 
-{# Remove PeerJS Import #}
-{# Remove Video Modal HTML #}
-
+{% block scripts %}
 <script type="module">
     import { EmojiButton } from 'https://cdn.skypack.dev/@joeattardi/emoji-button@4.6.4';
 
@@ -174,24 +172,27 @@
     window.startVideoCall = function () {
         if (!currentChatId) return;
 
+        // Determine IDs
+        let videoRoomId;
+        // Check for meta tag first (safest), fallback to Jinja
+        const userIdMeta = document.querySelector('meta[name="user-id"]');
+        const myId = userIdMeta ? parseInt(userIdMeta.content) : parseInt("{{ current_user.id }}");
+
+        if (currentChatType === 'group') {
+            videoRoomId = `video_group_${currentChatId}`;
+        } else {
+            videoRoomId = `video_user_${myId}_${currentChatId}`;
+        }
+
         // Notify others
-        socket.emit('start_group_call', {
+        socket.emit('start_call', {
             group_id: currentChatType === 'group' ? currentChatId : null,
-            recipient_id: currentChatType === 'user' ? currentChatId : null
+            recipient_id: currentChatType === 'user' ? currentChatId : null,
+            video_room_id: videoRoomId
         });
 
         // Navigate to room
-        // Consistent naming with backend
-        let roomId;
-        const myId = parseInt("{{ current_user.id }}");
-
-        if (currentChatType === 'group') {
-            roomId = `video_group_${currentChatId}`;
-        } else {
-            roomId = `video_user_${myId}_${currentChatId}`;
-        }
-
-        window.location.href = `/chat/video_room/${roomId}`;
+        window.location.href = `/chat/video_room/${videoRoomId}`;
     };
 
 

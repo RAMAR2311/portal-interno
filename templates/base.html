@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHAT MC - FIXED</title>
+    {% if current_user.is_authenticated %}
+    <meta name="user-id" content="{{ current_user.id }}">
+    {% endif %}
+    <!-- Favicon -->
+    <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='img/favicon.jpg') }}">
+    <!-- Google Fonts: Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Custom Premium Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Calendar Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/calendar_custom.css') }}">
+
+    <!-- Tippy.js -->
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/scale.css" />
+</head>
+
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#">CHAT MC</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if current_user.is_authenticated %}
+                    {% if current_user.rol == 'Admin' %}
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}">Admin Dashboard</a>
+                    </li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.create_user') }}">Crear Usuario</a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('employee.dashboard') }}">Mi Panel</a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if 'calendar' in request.path }}"
+                            href="{{ url_for('calendar.index') }}">
+                            <i class="fas fa-calendar-alt"></i> Calendario
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if 'training' in request.path }}"
+                            href="{{ url_for('training.index') }}">
+                            <i class="fas fa-graduation-cap"></i> Capacitaciones
+                        </a>
+                    </li>
+                    <li class="nav-item position-relative">
+                        <a class="nav-link" href="{{ url_for('chat.index') }}">
+                            Chat
+                            <span id="unread-badge"
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger {% if unread_count == 0 %}d-none{% endif %}"
+                                style="font-size: 0.6em; top: 10px !important;">
+                                {{ unread_count }}
+                            </span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn nav-link" id="darkModeToggle" title="Modo Oscuro">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                    </li>
+                    <li class="nav-item"><span class="nav-link text-warning">Hola, {{ current_user.nombre }}</span></li>
+                    <li class="nav-item"><a class="nav-link btn btn-danger btn-sm text-white ms-2"
+                            href="{{ url_for('auth.logout') }}">Salir</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div id="flash-messages-data" data-messages='{{ messages | tojson }}'></div>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Incoming Call Modal -->
+    <div class="modal fade" id="incomingCallModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+        aria-hidden="true" style="z-index: 2000;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg"
+                style="background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(10px);">
+                <div class="modal-body text-center p-5">
+                    <div class="mb-4">
+                        <div class="avatar-circle mx-auto mb-3 pulse-animation"
+                            style="width: 100px; height: 100px; background: var(--gold); font-size: 2.5rem; line-height: 100px;">
+                            <i class="fas fa-video text-white"></i>
+                        </div>
+                        <h3 class="text-white fw-bold mb-1" id="callCallerName">Nombre</h3>
+                        <p class="text-white-50 mb-0">Te está invitando a una videollamada...</p>
+                    </div>
+
+                    <div class="d-flex justify-content-center gap-4">
+                        <button type="button" class="btn btn-danger btn-lg rounded-circle p-3" data-bs-dismiss="modal"
+                            id="btnDeclineCall" style="width: 60px; height: 60px;">
+                            <i class="fas fa-phone-slash"></i>
+                        </button>
+                        <a href="#" id="btnAcceptCall"
+                            class="btn btn-success btn-lg rounded-circle p-3 incoming-call-accept"
+                            style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-video"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
+        <div id="liveToast" class="toast align-items-center text-dark bg-warning border-0" role="alert"
+            aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <strong id="toast-sender" class="d-block mb-1">Sender</strong>
+                    <span id="toast-body">Message content...</span>
+                </div>
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        window.socket = io();
+
+        window.socket.on('new_message', function (msg) {
+            if (!msg.is_me) {
+                const badge = document.getElementById('unread-badge');
+                if (badge) {
+                    let count = parseInt(badge.innerText) || 0;
+                    badge.innerText = count + 1;
+                    badge.classList.remove('d-none');
+                }
+                if (!window.location.pathname.includes('/chat')) {
+                    showToastNotification(msg);
+                }
+            }
+        });
+
+        // --- Video Call Notifications ---
+        window.socket.on('incoming_call', function (data) {
+            // Si soy el que llama, ignoro la notificación
+            const userIdMeta = document.querySelector('meta[name="user-id"]');
+            if (userIdMeta && data.caller_id == parseInt(userIdMeta.content)) {
+                return;
+            }
+
+            const modalEl = document.getElementById('incomingCallModal');
+            document.getElementById('callCallerName').innerText = data.caller_name;
+            document.getElementById('btnAcceptCall').href = `/chat/video_room/${data.room_id}`;
+
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+            playRingtone();
+        });
+
+        let ringInterval;
+        function playRingtone() {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                const ctx = new AudioContext();
+                const beep = () => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(440, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.0);
+                    osc.start(); osc.stop(ctx.currentTime + 1.0);
+                };
+                beep();
+                ringInterval = setInterval(beep, 2000);
+                document.getElementById('incomingCallModal').addEventListener('hidden.bs.modal', () => {
+                    clearInterval(ringInterval);
+                }, { once: true });
+            }
+        }
+
+        function showToastNotification(msg) {
+            showToast(msg.content || 'Nuevo mensaje', msg.sender_name || 'Chat');
+        }
+
+        const toggleBtn = document.getElementById('darkModeToggle');
+        const icon = toggleBtn.querySelector('i');
+        const body = document.body;
+
+        if (localStorage.getItem('darkMode') === 'enabled') {
+            enableDarkMode();
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            if (body.classList.contains('dark-mode')) disableDarkMode();
+            else enableDarkMode();
+        });
+
+        function enableDarkMode() {
+            body.classList.add('dark-mode');
+            icon.classList.replace('fa-moon', 'fa-sun');
+            localStorage.setItem('darkMode', 'enabled');
+        }
+
+        function disableDarkMode() {
+            body.classList.remove('dark-mode');
+            icon.classList.replace('fa-sun', 'fa-moon');
+            localStorage.setItem('darkMode', 'disabled');
+        }
+
+        const flashDiv = document.getElementById('flash-messages-data');
+        if (flashDiv) {
+            const messages = JSON.parse(flashDiv.dataset.messages);
+            messages.forEach(([category, msg]) => {
+                showToast(msg, category === 'error' ? 'Error' : 'Notificación', category);
+            });
+        }
+
+        function showToast(message, title = 'Notificación', type = 'info') {
+            const toastEl = document.getElementById('liveToast');
+            const container = document.querySelector('.toast-container');
+            const newToast = toastEl.cloneNode(true);
+            newToast.id = '';
+
+            newToast.querySelector('#toast-sender').innerText = title;
+            newToast.querySelector('#toast-body').innerText = message;
+
+            if (type === 'error' || type === 'danger') {
+                newToast.classList.replace('bg-warning', 'bg-danger');
+                newToast.classList.add('text-white');
+            } else if (type === 'success') {
+                newToast.classList.replace('bg-warning', 'bg-success');
+                newToast.classList.add('text-white');
+            }
+
+            container.appendChild(newToast);
+            const toast = new bootstrap.Toast(newToast);
+            toast.show();
+            newToast.addEventListener('hidden.bs.toast', () => newToast.remove());
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

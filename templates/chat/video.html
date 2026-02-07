@@ -146,7 +146,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 <script>
     const ROOM_ID = "{{ room_id }}";
-    const CURRENT_USER_ID = {{ current_user.id }};
+    const CURRENT_USER_ID = parseInt("{{ current_user.id }}");
     const CURRENT_USER_NAME = "{{ current_user.nombre }}";
 
     // WebRTC Config (Using public STUN servers for fallback)

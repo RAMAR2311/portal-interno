@@ -79,13 +79,22 @@ def handle_join_video(data):
 
 @socketio.on('start_call')
 def handle_start_call(data):
-    room = data.get('room_id')
-    # Emitir notificación global de llamada entrante
-    emit('incoming_call', {
-        'caller_id': current_user.id,
-        'caller_name': current_user.nombre,
-        'room_id': room
-    }, room=room, include_self=False)
+    recipient_id = data.get('recipient_id')
+    group_id = data.get('group_id')
+    video_room_id = data.get('video_room_id')
+
+    target_room = None
+    if group_id:
+        target_room = f"group_{group_id}"
+    elif recipient_id:
+        target_room = str(recipient_id)
+
+    if target_room and video_room_id:
+        emit('incoming_call', {
+            'caller_id': current_user.id,
+            'caller_name': current_user.nombre,
+            'room_id': video_room_id
+        }, room=target_room, include_self=False)
 
 @socketio.on('join_video_room')
 def handle_join_video_room(data):
