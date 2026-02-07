@@ -12,7 +12,8 @@ from models import db, User
 from extensions import socketio
 
 def create_app(config_class=Config):
-    app = Flask(__name__)
+    # Forzamos a Flask a buscar en la carpeta correcta
+    app = Flask(__name__, static_folder='static', static_url_path='/static')
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     app.config.from_object(config_class)
 
