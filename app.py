@@ -4,6 +4,7 @@ eventlet.monkey_patch()
 import os
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_migrate import Migrate
 from flask_login import LoginManager, current_user
 from config import Config
@@ -12,6 +13,7 @@ from extensions import socketio
 
 def create_app(config_class=Config):
     app = Flask(__name__)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     app.config.from_object(config_class)
 
     # Initialize extensions
