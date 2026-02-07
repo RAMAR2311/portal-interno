@@ -8,7 +8,7 @@ done
 echo "PostgreSQL listo"
 
 # Crear las tablas automáticamente
-python3 -c "from app import app; from models import db; with app.app_context(): db.create_all()"
+python3 -c "from app import app, db; ctx=app.app_context(); ctx.push(); db.create_all()"
 
 # Crear el admin por defecto
 python3 seed_admin.py

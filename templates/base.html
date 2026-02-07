@@ -163,17 +163,17 @@
 
         // --- Video Call Notifications ---
         window.socket.on('incoming_call', function (data) {
-            // Si soy el que llama, ignoro la notificación
-            const userIdMeta = document.querySelector('meta[name="user-id"]');
-            if (userIdMeta && data.caller_id == parseInt(userIdMeta.content)) {
+            {% if current_user.is_authenticated %}
+            // Corregido: Cierre de llaves y paréntesis
+            if (parseInt(data.caller_id) === parseInt("{{ current_user.id }}")) {
                 return;
             }
+            {% endif %}
 
-            const modalEl = document.getElementById('incomingCallModal');
             document.getElementById('callCallerName').innerText = data.caller_name;
-            document.getElementById('btnAcceptCall').href = `/chat/video_room/${data.room_id}`;
+            document.getElementById('btnAcceptCall').href = "/chat/video_room/" + data.room_id;
 
-            const modal = new bootstrap.Modal(modalEl);
+            const modal = new bootstrap.Modal(document.getElementById('incomingCallModal'));
             modal.show();
             playRingtone();
         });
