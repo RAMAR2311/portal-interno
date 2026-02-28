@@ -64,7 +64,8 @@ class PayrollService:
         mes: str,
         anio: int,
         periodo: str,
-        financial_data: dict
+        financial_data: dict,
+        bonus_details: dict = None
     ) -> bool:
         """
         Crea el registro de nómina en la base de datos y guarda el archivo PDF.
@@ -96,6 +97,12 @@ class PayrollService:
             'neto_pagar': neto_pagar,
             'generated_at': datetime.now(pytz.timezone('America/Bogota'))
         }
+
+        # Add bonus details
+        if bonus_details:
+            context.update(bonus_details)
+        else:
+            context.update({'bono_contratos': 0.0, 'bono_diagnosticos': 0.0, 'bonificaciones_adicionales': financial_data.get('bonificaciones', 0.0)})
 
         # Generate PDF
         pdf_content = PayrollService.generate_payroll_pdf(context)

@@ -129,9 +129,11 @@ class Comunicado(db.Model):
     archivo = db.Column(db.String(255), nullable=True) # Filename of PDF if any
     fecha_publicacion = db.Column(db.DateTime, default=get_bogota_time)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     
     # Relationship to know who posted it
-    author = db.relationship('User', backref='comunicados', lazy=True)
+    author = db.relationship('User', foreign_keys=[user_id], backref='comunicados', lazy=True)
+    recipient = db.relationship('User', foreign_keys=[recipient_id], backref='comunicados_recibidos', lazy=True)
 
 # Association table for Event Attendees
 event_attendees = db.Table('event_attendees',

@@ -11,18 +11,31 @@
                 <form method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label for="titulo" class="form-label">Título del Comunicado</label>
-                        <input type="text" class="form-control" id="titulo" name="titulo" required placeholder="Ej: Anuncio Importante sobre Vacaciones">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="contenido" class="form-label">Mensaje / Contenido</label>
-                        <textarea class="form-control" id="contenido" name="contenido" rows="6" required placeholder="Escribe aquí el detalle del anuncio..."></textarea>
+                        <input type="text" class="form-control" id="titulo" name="titulo" required
+                            placeholder="Ej: Anuncio Importante sobre Vacaciones">
                     </div>
 
                     <div class="mb-3">
-                        <label for="archivo" class="form-label">Archivo PDF Adjunto (Opcional)</label>
-                        <input type="file" class="form-control" id="archivo" name="archivo" accept="application/pdf">
-                        <div class="form-text">Solo se permiten archivos en formato PDF.</div>
+                        <label for="contenido" class="form-label">Mensaje / Contenido</label>
+                        <textarea class="form-control" id="contenido" name="contenido" rows="6" required
+                            placeholder="Escribe aquí el detalle del anuncio..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="recipient_id" class="form-label">Destinatario</label>
+                        <select class="form-select" id="recipient_id" name="recipient_id">
+                            <option value="all">Todos los empleados</option>
+                            {% for u in users %}
+                            <option value="{{ u.id }}">{{ u.nombre }} - {{ u.cargo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="archivo" class="form-label">Archivo Adjunto (Opcional)</label>
+                        <input type="file" class="form-control" id="archivo" name="archivo"
+                            accept="application/pdf, image/*">
+                        <div class="form-text">Formatos permitidos: PDF, PNG, JPG, JPEG, GIF.</div>
                     </div>
 
                     <div class="d-grid gap-2 mt-4">

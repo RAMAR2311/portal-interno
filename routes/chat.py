@@ -32,6 +32,14 @@ def handle_disconnect():
             online_users.remove(current_user.id)
         # Broadcast offline status
         emit('user_status', {'user_id': current_user.id, 'status': 'offline'}, broadcast=True)
+        
+        # Cleanup video rooms if user abruptly disconnects
+        for room_id, members in list(video_rooms.items()):
+            if request.sid in members:
+                members.remove(request.sid)
+                emit('user_left_video', {'user_id': current_user.id, 'sid': request.sid}, room=room_id, include_self=False)
+                if not members:
+                    del video_rooms[room_id]
 
 @socketio.on('typing')
 def handle_typing(data):
@@ -160,29 +168,10 @@ def handle_leave_video_room(data):
             if not video_rooms[room_id]:
                 del video_rooms[room_id]
                 
+    from flask_socketio import leave_room
+    leave_room(room_id)
     # Notify others so they remove the video element
-    emit('user_left', {'sid': request.sid}, room=room_id)
-
-@socketio.on('disconnect')
-def handle_disconnect_video():
-    # Check if user was in any video room
-    # This is expensive O(N) but necessary if we don't track room in session
-    # Optimized: We can store room_id in socket session if needed
-    for room_id, members in list(video_rooms.items()):
-        if request.sid in members:
-            members.remove(request.sid)
-            emit('user_left', {'sid': request.sid}, room=room_id)
-            if not members:
-                del video_rooms[room_id]
-    
-    # Call original disconnect logic manually if needed or let the other handler run (SocketIO runs all handlers for event)
-    # The other handle_disconnect is decorated too, Flask-SocketIO runs both? 
-    # Usually only one handler per event is best practice. 
-    # I will merge this logic into the main disconnect handler below or separate it carefully.
-    # Since I am replacing the block, I will rely on the global disconnect handler I saw earlier? 
-    # Wait, simple separate handler might cause conflict if not designed well.
-    # Better to just use 'leave_video_room' explicitly on frontend unload.
-    pass
+    emit('user_left_video', {'user_id': current_user.id, 'sid': request.sid}, room=room_id, include_self=False)
 
 @chat_bp.route('/video_room/<room_id>')
 @login_required

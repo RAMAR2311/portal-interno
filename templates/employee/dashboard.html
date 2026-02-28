@@ -209,10 +209,23 @@
                         </div>
                         <p class="mb-1 text-muted small">{{ comunicado.contenido }}</p>
                         {% if comunicado.archivo %}
+                        {% set ext = comunicado.archivo.split('.')[-1] | lower %}
+                        {% if ext in ['png', 'jpg', 'jpeg', 'gif'] %}
+                        <div class="mt-2 text-center">
+                            <img src="{{ url_for('static', filename='uploads/comunicados/' + comunicado.archivo) }}"
+                                class="img-fluid rounded" style="max-height: 150px; object-fit: cover;"
+                                alt="Thumbnail adjunto">
+                        </div>
                         <a href="{{ url_for('employee.download_comunicado', comunicado_id=comunicado.id) }}"
-                            class="btn btn-sm btn-link text-gold p-0 text-decoration-none">
+                            class="btn btn-sm btn-link text-gold p-0 text-decoration-none mt-1 d-inline-block">
+                            <i class="fas fa-download"></i> Descargar adjunto
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('employee.download_comunicado', comunicado_id=comunicado.id) }}"
+                            class="btn btn-sm btn-link text-gold p-0 text-decoration-none mt-2 d-inline-block">
                             <i class="fas fa-paperclip"></i> Ver adjunto
                         </a>
+                        {% endif %}
                         {% endif %}
                     </div>
                     {% endfor %}

@@ -14,12 +14,14 @@
         .header {
             text-align: center;
             margin-bottom: 20px;
-            border-bottom: 2px solid #0056b3;
+            border-bottom: 2px solid #D4AF37;
+            /* Clean Gold */
             padding-bottom: 10px;
         }
 
         .header h1 {
-            color: #0056b3;
+            color: #222222;
+            /* Deep solid black/charcoal */
             margin: 0;
             text-transform: uppercase;
             font-size: 16pt;
@@ -28,14 +30,18 @@
         .header p {
             margin: 2px 0;
             font-size: 9pt;
-            color: #666;
+            color: #666666;
         }
 
         .section-title {
-            background-color: #f0f0f0;
-            padding: 5px;
+            background-color: #FFF0F5;
+            /* LavenderBlush - very soft friendly pink */
+            color: #333333;
+            /* Dark text for readability */
+            padding: 8px 10px;
             font-weight: bold;
-            border-left: 4px solid #0056b3;
+            border-left: 5px solid #D4AF37;
+            /* Elegant Gold border */
             margin-top: 15px;
             margin-bottom: 10px;
         }
@@ -48,13 +54,15 @@
 
         th,
         td {
-            padding: 6px;
-            border-bottom: 1px solid #ddd;
+            padding: 8px;
+            border-bottom: 1px solid #f0f0f0;
+            /* Softer table borders */
         }
 
         th {
             text-align: left;
-            background-color: #f9f9f9;
+            background-color: #fafafa;
+            color: #1a1a1a;
             font-weight: bold;
         }
 
@@ -64,18 +72,25 @@
 
         .total-row td {
             font-weight: bold;
-            border-top: 2px solid #333;
-            background-color: #e9ecef;
+            border-top: 2px solid #D4AF37;
+            /* Gold separator for totals */
+            background-color: #FFF0F5;
+            /* Soft friendly pink */
+            color: #222222;
         }
 
         .neto-pay {
             font-size: 14pt;
-            color: #28a745;
+            color: #D4AF37;
+            /* Gold text */
             text-align: right;
-            border: 2px solid #28a745;
-            padding: 10px;
+            border-radius: 8px;
+            /* Rounded corners for friendly look */
+            padding: 12px 15px;
             margin-top: 20px;
             font-weight: bold;
+            background-color: #222222;
+            /* Soft deep black */
         }
 
         #footerContent {
@@ -88,9 +103,9 @@
 
 <body>
     <div class="header">
-        <h1>CHAT MC</h1>
-        <p>CHAT MC</p>
-        <p>NIT: 900.000.000-1</p>
+        <h1>MC INNOVACION FINANCIERA S.A.S</h1>
+        <p>MC INNOVACION FINANCIERA S.A.S</p>
+        <p>NIT: 9020266029</p>
     </div>
 
     <table>
@@ -121,10 +136,30 @@
             <td>Auxilio de Transporte</td>
             <td class="text-right">${{ "{:,.2f}".format(auxilio_transporte) }}</td>
         </tr>
+        {% if bonificaciones_adicionales > 0 %}
         <tr>
-            <td>Bonificaciones</td>
+            <td>Bonificaciones Adicionales</td>
+            <td class="text-right">${{ "{:,.2f}".format(bonificaciones_adicionales) }}</td>
+        </tr>
+        {% endif %}
+        {% if bono_contratos > 0 %}
+        <tr>
+            <td>Comisión Contratos</td>
+            <td class="text-right">${{ "{:,.2f}".format(bono_contratos) }}</td>
+        </tr>
+        {% endif %}
+        {% if bono_diagnosticos > 0 %}
+        <tr>
+            <td>Comisión Diagnósticos</td>
+            <td class="text-right">${{ "{:,.2f}".format(bono_diagnosticos) }}</td>
+        </tr>
+        {% endif %}
+        {% if bonificaciones > 0 and (bono_contratos + bono_diagnosticos + bonificaciones_adicionales) == 0 %}
+        <tr>
+            <td>Suma de Bonos Adicionales</td>
             <td class="text-right">${{ "{:,.2f}".format(bonificaciones) }}</td>
         </tr>
+        {% endif %}
         <tr class="total-row">
             <td>Total Devengado</td>
             <td class="text-right">${{ "{:,.2f}".format(total_devengado) }}</td>

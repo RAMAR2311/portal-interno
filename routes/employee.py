@@ -32,7 +32,7 @@ def change_status():
 @login_required
 def dashboard():
     payrolls = PayrollDoc.query.filter_by(user_id=current_user.id).order_by(PayrollDoc.created_at.desc()).all()
-    comunicados = Comunicado.query.order_by(Comunicado.fecha_publicacion.desc()).all()
+    comunicados = Comunicado.query.filter((Comunicado.recipient_id == current_user.id) | (Comunicado.recipient_id == None)).order_by(Comunicado.fecha_publicacion.desc()).all()
     
     # 1. Calculate Hours Worked Today
     today_start = datetime.now(pytz.timezone('America/Bogota')).replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
@@ -131,7 +131,7 @@ def download_certificate():
 @login_required
 def download_payroll(doc_id):
     doc = PayrollDoc.query.get_or_404(doc_id)
-    if doc.user_id != current_user.id:
+    if doc.user_id != current_user.id and current_user.rol != 'Admin':
         flash("Acceso denegado.", "danger")
         return redirect(url_for('employee.dashboard'))
     

@@ -16,7 +16,8 @@
                             <select name="user_id" id="user_id" class="form-select" required onchange="updateSalary()">
                                 <option value="">Seleccione un empleado...</option>
                                 {% for user in users %}
-                                <option value="{{ user.id }}" data-salary="{{ user.salario }}">{{ user.nombre }} - {{
+                                <option value="{{ user.id }}" data-salary="{{ user.salario }}"
+                                    data-cargo="{{ user.cargo }}">{{ user.nombre }} - {{
                                     user.cargo }}</option>
                                 {% endfor %}
                             </select>
@@ -70,11 +71,42 @@
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Bonificaciones</label>
+                            <label class="form-label">Bonificaciones Adicionales</label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
-                                <input type="number" step="0.01" name="bonificaciones" id="bonificaciones"
-                                    class="form-control" value="0" required oninput="calculateTotals()">
+                                <input type="number" step="0.01" name="bonificaciones_adicionales"
+                                    id="bonificaciones_adicionales" class="form-control" value="0" required
+                                    oninput="calculateTotals()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="seccion_bonos_comerciales" style="display: none;">
+                        <h5 class="text-success border-bottom pb-2 mt-4">Bonificaciones Comerciales</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Contratos</label>
+                                <input type="number" name="num_contratos" id="num_contratos" class="form-control"
+                                    value="0" min="0" oninput="calculateCommercialBonuses()">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Valor Contratos</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="text" id="valor_contratos" class="form-control" value="0" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Diagnósticos</label>
+                                <input type="number" name="num_diagnosticos" id="num_diagnosticos" class="form-control"
+                                    value="0" min="0" oninput="calculateCommercialBonuses()">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Valor Diagnósticos</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="text" id="valor_diagnosticos" class="form-control" value="0" readonly>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -151,7 +183,11 @@
 <script>
     function updateSalary() {
         const select = document.getElementById('user_id');
-        const salary = select.options[select.selectedIndex].getAttribute('data-salary');
+        const option = select.options[select.selectedIndex];
+        const salary = option ? option.getAttribute('data-salary') : null;
+        const rawCargo = option ? option.getAttribute('data-cargo') : '';
+        const cargo = rawCargo ? rawCargo.trim().toUpperCase() : '';
+
         if (salary) {
             // Divide base salary by 2 for fortnightly payroll
             const baseMensual = parseFloat(salary);
@@ -163,8 +199,45 @@
             const contribution = baseQuincenal * 0.04;
             document.getElementById('aporte_salud').value = contribution.toFixed(2);
             document.getElementById('aporte_pension').value = contribution.toFixed(2);
+
+            const btnSeccion = document.getElementById('seccion_bonos_comerciales');
+            if (cargo === 'COORDINADOR COMERCIAL' || cargo === 'ASESOR COMERCIAL') {
+                btnSeccion.style.display = 'block';
+            } else {
+                btnSeccion.style.display = 'none';
+                document.getElementById('num_contratos').value = 0;
+                document.getElementById('num_diagnosticos').value = 0;
+            }
+
+            calculateCommercialBonuses();
             calculateTotals();
         }
+    }
+
+    function calculateCommercialBonuses() {
+        const select = document.getElementById('user_id');
+        const option = select.options[select.selectedIndex];
+        const rawCargo = option ? option.getAttribute('data-cargo') : '';
+        const cargo = rawCargo ? rawCargo.trim().toUpperCase() : '';
+
+        const numContratos = parseInt(document.getElementById('num_contratos').value) || 0;
+        const numDiagnosticos = parseInt(document.getElementById('num_diagnosticos').value) || 0;
+
+        let valorContratos = 0;
+        let valorDiagnosticos = 0;
+
+        if (cargo === 'COORDINADOR COMERCIAL') {
+            valorContratos = numContratos * 100000;
+            valorDiagnosticos = Math.max(0, numDiagnosticos - 64) * 40000;
+        } else if (cargo === 'ASESOR COMERCIAL') {
+            valorContratos = numContratos * 50000;
+            valorDiagnosticos = Math.max(0, numDiagnosticos - 64) * 35000;
+        }
+
+        document.getElementById('valor_contratos').value = valorContratos;
+        document.getElementById('valor_diagnosticos').value = valorDiagnosticos;
+
+        calculateTotals();
     }
 
     function calculateDeduction() {
@@ -183,8 +256,10 @@
         // Devengados
         const salario = parseFloat(document.getElementById('salario_base').value) || 0;
         const aux = parseFloat(document.getElementById('auxilio_transporte').value) || 0;
-        const bonos = parseFloat(document.getElementById('bonificaciones').value) || 0;
-        const totalDev = salario + aux + bonos;
+        const bonosAdicionales = parseFloat(document.getElementById('bonificaciones_adicionales').value) || 0;
+        const bonoContratos = parseFloat(document.getElementById('valor_contratos') ? document.getElementById('valor_contratos').value : 0) || 0;
+        const bonoDiagnosticos = parseFloat(document.getElementById('valor_diagnosticos') ? document.getElementById('valor_diagnosticos').value : 0) || 0;
+        const totalDev = salario + aux + bonosAdicionales + bonoContratos + bonoDiagnosticos;
 
         // Deducidos
         const descDias = parseFloat(document.getElementById('valor_descuento_dias').value) || 0;

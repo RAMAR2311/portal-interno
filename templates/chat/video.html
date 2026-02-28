@@ -240,12 +240,18 @@
         }
     });
 
-    socket.on('user_left', data => {
+    socket.on('user_left_video', data => {
         const sid = data.sid;
         if (peers[sid]) {
             peers[sid].peer.close();
             delete peers[sid];
             removeVideo(sid);
+
+            // Lógica de cierre automático (1 a 1)
+            // Si el objeto peers queda vacío, significa que el otro participante se fue y quedamos solos en la sala.
+            if (Object.keys(peers).length === 0) {
+                hangupCall();
+            }
         }
     });
 
@@ -322,10 +328,31 @@
 
     // --- UI Controls ---
 
-    document.getElementById('btnHangup').addEventListener('click', () => {
+    function hangupCall() {
         socket.emit('leave_video_room', { room_id: ROOM_ID });
-        localStream.getTracks().forEach(track => track.stop());
+
+        // Detener pistas de la cámara y micrófono local
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+        }
+
+        // Cerrar todos los peer connections
+        for (let key in peers) {
+            if (peers[key] && peers[key].peer) {
+                peers[key].peer.close();
+            }
+            delete peers[key];
+        }
+
+        // Ocultar la UI
+        document.querySelector('.video-call-container').style.display = 'none';
+
+        // Redirigir al chat y limpiar el estado de la página
         window.location.href = '/chat';
+    }
+
+    document.getElementById('btnHangup').addEventListener('click', () => {
+        hangupCall();
     });
 
     // Initialize
@@ -333,7 +360,7 @@
 
     // Cleanup on window unload
     window.addEventListener('beforeunload', () => {
-        socket.emit('leave_video_room', { room_id: ROOM_ID });
+        hangupCall();
     });
 
 </script>

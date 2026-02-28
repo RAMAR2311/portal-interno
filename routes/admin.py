@@ -326,7 +326,7 @@ def view_employee_profile(user_id):
     
     # Logic duplicated from employee.dashboard to show correct stats for THIS user
     payrolls = PayrollDoc.query.filter_by(user_id=user.id).order_by(PayrollDoc.created_at.desc()).all()
-    comunicados = Comunicado.query.order_by(Comunicado.fecha_publicacion.desc()).all()
+    comunicados = Comunicado.query.filter((Comunicado.recipient_id == user.id) | (Comunicado.recipient_id == None)).order_by(Comunicado.fecha_publicacion.desc()).all()
     
     # 1. Calculate Hours Worked Today for the target user
     today_start = get_bogota_time().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
@@ -417,11 +417,30 @@ def create_payroll():
     
     if request.method == 'POST':
         user_id = int(request.form.get('user_id') or 0)
+        user = User.query.get(user_id)
+        
+        num_contratos = int(request.form.get('num_contratos') or 0)
+        num_diagnosticos = int(request.form.get('num_diagnosticos') or 0)
+        bonificaciones_adicionales = float(request.form.get('bonificaciones_adicionales') or 0.0)
+        
+        bono_contratos = 0
+        bono_diagnosticos = 0
+        
+        if user and user.cargo:
+            cargo_limpio = user.cargo.strip().upper()
+            if cargo_limpio == 'COORDINADOR COMERCIAL':
+                bono_contratos = num_contratos * 100000
+                bono_diagnosticos = max(0, num_diagnosticos - 64) * 40000
+            elif cargo_limpio == 'ASESOR COMERCIAL':
+                bono_contratos = num_contratos * 50000
+                bono_diagnosticos = max(0, num_diagnosticos - 64) * 35000
+            
+        total_bonificaciones = bonificaciones_adicionales + bono_contratos + bono_diagnosticos
         
         financial_data = {
             'salario_base': float(request.form.get('salario_base') or 0.0),
             'auxilio_transporte': float(request.form.get('auxilio_transporte') or 0.0),
-            'bonificaciones': float(request.form.get('bonificaciones') or 0.0),
+            'bonificaciones': total_bonificaciones,
             'dias_injustificados': int(request.form.get('dias_injustificados') or 0),
             'valor_descuento_dias': float(request.form.get('valor_descuento_dias') or 0.0),
             'aporte_salud': float(request.form.get('aporte_salud') or 0.0),
@@ -429,12 +448,19 @@ def create_payroll():
             'otros_descuentos': float(request.form.get('otros_descuentos') or 0.0)
         }
         
+        bonus_details = {
+            'bono_contratos': bono_contratos,
+            'bono_diagnosticos': bono_diagnosticos,
+            'bonificaciones_adicionales': bonificaciones_adicionales
+        }
+        
         success = PayrollService.create_payroll_record(
             user_id=user_id,
             mes=request.form.get('mes'),
             anio=int(request.form.get('anio') or 0),
             periodo=request.form.get('periodo'),
-            financial_data=financial_data
+            financial_data=financial_data,
+            bonus_details=bonus_details
         )
             
         if success:
@@ -459,20 +485,28 @@ def crear_comunicado():
         
         archivo_filename = None
         if file and file.filename != '':
-            if file.filename.endswith('.pdf'):
+            allowed_extensions = {'.pdf', '.png', '.jpg', '.jpeg', '.gif'}
+            ext = os.path.splitext(file.filename)[1].lower()
+            if ext in allowed_extensions:
                 archivo_filename = secure_filename(f"comunicado_{int(datetime.now().timestamp())}_{file.filename}")
                 save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'comunicados')
                 os.makedirs(save_path, exist_ok=True)
                 file.save(os.path.join(save_path, archivo_filename))
             else:
-                flash('Solo se permiten archivos PDF.', 'danger')
+                flash('Solo se permiten archivos PDF o imágenes (PNG, JPG, JPEG, GIF).', 'danger')
                 return redirect(request.url)
+
+        recipient_id_str = request.form.get('recipient_id')
+        recipient_id = None
+        if recipient_id_str and recipient_id_str != 'all':
+            recipient_id = int(recipient_id_str)
         
         nuevo_comunicado = Comunicado(
             titulo=titulo,
             contenido=contenido,
             archivo=archivo_filename,
-            user_id=current_user.id
+            user_id=current_user.id,
+            recipient_id=recipient_id
         )
         
         db.session.add(nuevo_comunicado)
@@ -481,5 +515,6 @@ def crear_comunicado():
         flash('Comunicado publicado exitosamente.', 'success')
         return redirect(url_for('admin.dashboard'))
         
-    return render_template('admin/crear_comunicado.html')
+    users = User.query.all()
+    return render_template('admin/crear_comunicado.html', users=users)
 
