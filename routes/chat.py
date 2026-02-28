@@ -338,6 +338,9 @@ def send_message():
     db.session.commit()
 
     # Emit Logic
+    import pytz
+    bogota_time_str = datetime.now(pytz.timezone('America/Bogota')).strftime('%H:%M')
+    
     msg_payload = {
         'sender_id': current_user.id,
         'sender_name': current_user.nombre,
@@ -345,7 +348,7 @@ def send_message():
         'group_id': group_id,
         'content': content,
         'filename': filename,
-        'timestamp': new_msg.timestamp.strftime('%H:%M'),
+        'timestamp': bogota_time_str, # <--- FORZAMOS LA HORA EXACTA AQUÍ
         'is_me': False
     }
 

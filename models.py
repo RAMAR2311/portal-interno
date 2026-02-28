@@ -8,7 +8,7 @@ db = SQLAlchemy()
 
 def get_bogota_time():
     bogota_tz = pytz.timezone('America/Bogota')
-    return datetime.now(bogota_tz)
+    return datetime.now(bogota_tz).replace(tzinfo=None)
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
