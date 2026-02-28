@@ -8,6 +8,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - TZ=America/Bogota # <--- AGREGAR ESTA LÍNEA
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/portal_db
       - SECRET_KEY=cambiar_esta_clave_en_produccion
       - FLASK_APP=app.py
@@ -23,6 +24,7 @@ services:
     container_name: portal_interno_db
     restart: always
     environment:
+      - TZ=America/Bogota # <--- AGREGAR ESTA LÍNEA
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=portal_db
