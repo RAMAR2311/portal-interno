@@ -41,6 +41,7 @@ class User(UserMixin, db.Model):
     direccion = db.Column(db.String(255))
     tipo_sangre = db.Column(db.String(10))
     current_status = db.Column(db.String(20), default='Inactivo') # Activo, Inactivo, En Break, En Almuerzo
+    is_active = db.Column(db.Boolean, default=True) # Reemplaza el uso erróneo de current_status para desactivar empleados
     
     # Relationships
     messages_sent = db.relationship('Message', foreign_keys='Message.sender_id', backref='sender', lazy=True)
@@ -100,6 +101,7 @@ class Message(db.Model):
     filename = db.Column(db.String(255), nullable=True) # For attached files
     timestamp = db.Column(db.DateTime, index=True, default=get_bogota_time)
     is_read = db.Column(db.Boolean, default=False)
+    read_at = db.Column(db.DateTime, nullable=True)
 
 
 class PayrollDoc(db.Model):

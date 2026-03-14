@@ -19,7 +19,8 @@
                 <div class="list-group list-group-flush mt-1" id="group-list">
                     {% for group in groups %}
                     <a href="#" class="list-group-item list-group-item-action chat-select rounded mb-1 border-0"
-                        data-type="group" data-id="{{ group.id }}" data-name="{{ group.name }}">
+                        data-type="group" data-id="{{ group.id }}" data-name="{{ group.name }}"
+                        data-can-edit="{{ 'true' if current_user.id == group.created_by or current_user.rol == 'Admin' else 'false' }}">
                         <div class="d-flex align-items-center">
                             <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
                                 style="width: 32px; height: 32px;">
@@ -157,6 +158,32 @@
     </div>
 </div>
 
+<!-- Add Member Modal -->
+<div class="modal fade" id="addMemberModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Añadir Miembros al Grupo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-member-form">
+                    <div class="mb-3">
+                        <label class="form-label">Seleccionar Miembros a Añadir</label>
+                        <div class="border rounded p-2" id="available-members-list" style="max-height: 200px; overflow-y: auto;">
+                            <!-- Checkboxes se inyectarán aquí vía JS -->
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddMembers()">Añadir</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -284,12 +311,30 @@
                 videoBtn.onclick = window.startVideoCall;
                 document.getElementById('chat-header').appendChild(videoBtn);
             }
+            
+            let addMemberBtn = document.getElementById('add-member-btn');
+            if (!addMemberBtn) {
+                addMemberBtn = document.createElement('button');
+                addMemberBtn.id = 'add-member-btn';
+                addMemberBtn.className = 'btn btn-light text-success border ms-2';
+                addMemberBtn.innerHTML = '<i class="fas fa-user-plus"></i>';
+                addMemberBtn.title = 'Añadir Miembro';
+                addMemberBtn.onclick = window.openAddMemberModal;
+                document.getElementById('chat-header').appendChild(addMemberBtn);
+            }
 
             // Show video button for both users and groups
             if (currentChatType === 'user' || currentChatType === 'group') {
                 videoBtn.classList.remove('d-none');
             } else {
                 videoBtn.classList.add('d-none');
+            }
+            
+            const canEdit = this.dataset.canEdit === 'true';
+            if (currentChatType === 'group' && canEdit) {
+                addMemberBtn.classList.remove('d-none');
+            } else {
+                addMemberBtn.classList.add('d-none');
             }
 
             // Set Avatar
@@ -323,6 +368,63 @@
             loadMessages();
         });
     });
+
+    window.openAddMemberModal = function() {
+        if (currentChatType !== 'group' || !currentChatId) return;
+        
+        // Fetch available members
+        fetch(`/chat/get_available_members/${currentChatId}`)
+            .then(res => res.json())
+            .then(data => {
+                const listEl = document.getElementById('available-members-list');
+                listEl.innerHTML = '';
+                if (data.users && data.users.length > 0) {
+                    data.users.forEach(user => {
+                        listEl.innerHTML += `
+                            <div class="form-check">
+                                <input class="form-check-input new-member-check" type="checkbox" value="${user.id}" id="new_user_${user.id}">
+                                <label class="form-check-label" for="new_user_${user.id}">
+                                    ${user.nombre} <small class="text-muted">(${user.cargo})</small>
+                                </label>
+                            </div>
+                        `;
+                    });
+                } else {
+                    listEl.innerHTML = '<div class="text-muted text-center p-3">No hay más usuarios disponibles</div>';
+                }
+                
+                const modal = new bootstrap.Modal(document.getElementById('addMemberModal'));
+                modal.show();
+            })
+            .catch(err => console.error(err));
+    };
+
+    window.submitAddMembers = function() {
+        if (currentChatType !== 'group' || !currentChatId) return;
+        
+        const checkboxes = document.querySelectorAll('.new-member-check:checked');
+        const members = Array.from(checkboxes).map(cb => cb.value);
+        
+        if (members.length === 0) {
+            alert('Por favor seleccione al menos un miembro.');
+            return;
+        }
+        
+        fetch(`/chat/add_members/${currentChatId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ members: members })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload(); 
+            } else {
+                alert('Error al añadir miembros: ' + data.error);
+            }
+        })
+        .catch(err => alert('Error de red al añadir miembros.'));
+    };
 
     // Typing Indicator Logic
     const msgInput = document.getElementById('message-input');
@@ -517,6 +619,9 @@
                         const newHeight = chatBox.scrollHeight;
                         chatBox.scrollTop = newHeight - oldHeight;
                     }
+
+                    rebuildDateSeparators();
+                    observeNewMessages();
                 }
                 isLoadingMessages = false;
             })
@@ -524,6 +629,62 @@
                 console.error(err);
                 isLoadingMessages = false;
             });
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        const today = new Date();
+        const msgDate = new Date(dateStr + 'T12:00:00');
+        
+        const todayStr = today.toISOString().split('T')[0];
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        
+        if (dateStr === todayStr) return 'Hoy';
+        if (dateStr === yesterdayStr) return 'Ayer';
+        
+        const options = { month: 'long', day: 'numeric', year: 'numeric' };
+        return msgDate.toLocaleDateString('es-ES', options);
+    }
+
+    function rebuildDateSeparators() {
+        document.querySelectorAll('.date-separator').forEach(el => el.remove());
+        const messages = Array.from(document.querySelectorAll('.msg-item'));
+        let lastDate = null;
+        messages.forEach(msgEl => {
+            const msgDate = msgEl.getAttribute('data-date');
+            if (msgDate !== lastDate && msgDate) {
+                const dateHtml = `<div class="text-center my-3 date-separator"><span class="badge bg-light text-muted border">${formatDate(msgDate)}</span></div>`;
+                msgEl.insertAdjacentHTML('beforebegin', dateHtml);
+                lastDate = msgDate;
+            }
+        });
+    }
+
+    const unreadObserver = new IntersectionObserver((entries) => {
+        const unreadIds = [];
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const msgEl = entry.target;
+                const msgId = msgEl.getAttribute('data-id');
+                if (msgId) {
+                    unreadIds.push(msgId);
+                    msgEl.removeAttribute('data-unread');
+                    unreadObserver.unobserve(msgEl);
+                }
+            }
+        });
+
+        if (unreadIds.length > 0) {
+            socket.emit('mark_as_read', { message_ids: unreadIds });
+        }
+    }, { threshold: 0.5 });
+
+    function observeNewMessages() {
+        document.querySelectorAll('.msg-item[data-unread="true"]').forEach(el => {
+            unreadObserver.observe(el);
+        });
     }
 
     function appendMessage(msg, prepend = false) {
@@ -538,9 +699,16 @@
             senderInfo = `<div class="chat-sender-name">${msg.sender_name}</div>`;
         }
 
+        let readIconHtml = '';
+        // Mostramos el icono de leído solo para el que envía en un mensaje directo
+        if (isMe && (!msg.group_id)) {
+            const iconClass = msg.is_read ? 'fa-check-double text-info' : 'fa-check text-secondary';
+            readIconHtml = `<i class="fas ${iconClass} ms-1 msg-read-icon" data-msg-id="${msg.id}" style="font-size: 0.7em;"></i>`;
+        }
+
         let contentHtml = `
-        <div class="d-flex w-100 mb-2 ${directionClass}">
-            <div class="message-bubble">
+        <div class="d-flex w-100 mb-2 ${directionClass} msg-item" data-id="${msg.id}" data-date="${msg.full_date}" ${!isMe && !msg.is_read ? 'data-unread="true"' : ''}>
+            <div class="message-bubble" style="max-width: 75%;">
                 ${senderInfo}
                 ${msg.content ? `<div class="mb-1">${msg.content}</div>` : ''}
                 ${msg.filename ? `
@@ -550,7 +718,10 @@
                             <span class="text-truncate" style="max-width: 150px;">Adjunto</span>
                         </a>
                     </div>` : ''}
-                <div class="chat-timestamp">${msg.timestamp}</div>
+                <div class="chat-timestamp d-flex align-items-center justify-content-end gap-1">
+                    ${msg.timestamp}
+                    ${readIconHtml}
+                </div>
             </div>
         </div>`;
 
@@ -558,7 +729,6 @@
             chatBox.insertAdjacentHTML('afterbegin', contentHtml);
         } else {
             chatBox.insertAdjacentHTML('beforeend', contentHtml);
-            // Scroll only if user was already at bottom OR if user sent the message (and we are appending)
             if (isAtBottom || isMe) {
                 chatBox.scrollTop = chatBox.scrollHeight;
             }
@@ -577,8 +747,22 @@
 
         if (shouldShow) {
             appendMessage(msg);
+            rebuildDateSeparators();
+            observeNewMessages();
             // Hide typing indicator when message received
             document.getElementById('chat-status').textContent = currentChatType === 'group' ? 'Grupo' : 'En línea';
+        }
+    });
+
+    socket.on('messages_read', function (data) {
+        if (currentChatType === 'user' && currentChatId == data.recipient_id) {
+            data.message_ids.forEach(msgId => {
+                const icon = document.querySelector(`.msg-read-icon[data-msg-id="${msgId}"]`);
+                if (icon) {
+                    icon.classList.remove('fa-check', 'text-secondary');
+                    icon.classList.add('fa-check-double', 'text-info');
+                }
+            });
         }
     });
 

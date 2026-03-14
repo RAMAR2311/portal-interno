@@ -1,5 +1,5 @@
 import os
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from models import db, User, PayrollDoc, TimeLog, Comunicado, get_bogota_time
@@ -177,7 +177,8 @@ def admin_required():
 @admin_bp.route('/dashboard')
 def dashboard():
     users = User.query.filter(User.rol != 'Admin').all()
-    return render_template('admin/dashboard.html', users=users)
+    comunicados = Comunicado.query.order_by(Comunicado.fecha_publicacion.desc()).all()
+    return render_template('admin/dashboard.html', users=users, comunicados=comunicados)
 
 @admin_bp.route('/create_user', methods=['GET', 'POST'])
 def create_user():
@@ -208,6 +209,9 @@ def create_user():
         numero_cuenta = request.form.get('numero_cuenta')
         direccion = request.form.get('direccion')
         tipo_sangre = request.form.get('tipo_sangre')
+        
+        is_active_str = request.form.get('is_active')
+        is_active = is_active_str == 'true' if is_active_str else True
 
         # Handle Profile Picture
         foto_perfil = None
@@ -246,7 +250,8 @@ def create_user():
             numero_cuenta=numero_cuenta,
             direccion=direccion,
             tipo_sangre=tipo_sangre,
-            foto_perfil=foto_perfil
+            foto_perfil=foto_perfil,
+            is_active=is_active
         )
         new_user.set_password(password)
         
@@ -256,6 +261,26 @@ def create_user():
         return redirect(url_for('admin.dashboard'))
 
     return render_template('admin/create_user.html')
+
+@admin_bp.route('/toggle_user_status/<int:user_id>', methods=['POST'])
+@login_required
+def toggle_user_status(user_id):
+    if current_user.rol != 'Admin':
+        return jsonify({'error': 'No autorizado'}), 403
+        
+    user = User.query.get_or_404(user_id)
+    # Evitar que el admin se desactive a sí mismo por error
+    if user.id == current_user.id:
+        return jsonify({'error': 'No puedes desactivar tu propia cuenta'}), 400
+        
+    user.is_active = not user.is_active
+    db.session.commit()
+    
+    return jsonify({
+        'status': 'success', 
+        'is_active': user.is_active,
+        'label': 'Activo' if user.is_active else 'Inactivo'
+    })
 
 @admin_bp.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
 @login_required
@@ -301,6 +326,10 @@ def edit_user(user_id):
         user.direccion = request.form.get('direccion')
         user.tipo_sangre = request.form.get('tipo_sangre')
         
+        is_active_str = request.form.get('is_active')
+        if is_active_str:
+            user.is_active = is_active_str == 'true'
+        
         if 'foto_perfil' in request.files:
             file = request.files['foto_perfil']
             if file and file.filename != '':
@@ -323,6 +352,9 @@ def view_employee_profile(user_id):
         return redirect(url_for('employee.dashboard'))
     
     user = User.query.get_or_404(user_id)
+    if not user.is_active:
+        flash('No se puede gestionar el perfil de empleados en estado Retirado.', 'warning')
+        return redirect(url_for('admin.dashboard'))
     
     # Logic duplicated from employee.dashboard to show correct stats for THIS user
     payrolls = PayrollDoc.query.filter_by(user_id=user.id).order_by(PayrollDoc.created_at.desc()).all()
@@ -381,7 +413,7 @@ def time_tracking():
          return redirect(url_for('employee.dashboard'))
          
     # Get all employees
-    employees = User.query.filter(User.rol != 'Admin').all()
+    employees = User.query.filter(User.rol != 'Admin', User.is_active == True).all()
     
     # Calculate Debt for each employee
     for emp in employees:
@@ -418,6 +450,9 @@ def create_payroll():
     if request.method == 'POST':
         user_id = int(request.form.get('user_id') or 0)
         user = User.query.get(user_id)
+        if user and not getattr(user, 'is_active', True):
+            flash('No se puede generar nómina para empleados en estado Retirado.', 'danger')
+            return redirect(url_for('admin.dashboard'))
         
         num_contratos = int(request.form.get('num_contratos') or 0)
         num_diagnosticos = int(request.form.get('num_diagnosticos') or 0)
@@ -469,7 +504,7 @@ def create_payroll():
         else:
             flash('Error al generar el PDF o guardar el registro.', 'danger')
             
-    users: list[User] = User.query.filter(User.rol != 'Admin').all()
+    users: list[User] = User.query.filter(User.rol != 'Admin', User.is_active == True).all()
     return render_template('admin/create_payroll.html', users=users)
 
 @admin_bp.route('/crear_comunicado', methods=['GET', 'POST'])
@@ -517,4 +552,27 @@ def crear_comunicado():
         
     users = User.query.all()
     return render_template('admin/crear_comunicado.html', users=users)
+
+
+@admin_bp.route('/eliminar_comunicado/<int:id>', methods=['POST'])
+@login_required
+def eliminar_comunicado(id):
+    if current_user.rol != 'Admin':
+        return redirect(url_for('employee.dashboard'))
+        
+    comunicado = Comunicado.query.get_or_404(id)
+    
+    if comunicado.archivo:
+        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'comunicados', comunicado.archivo)
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                flash(f'Error al eliminar el archivo físico: {str(e)}', 'warning')
+
+    db.session.delete(comunicado)
+    db.session.commit()
+    
+    flash('Comunicado eliminado exitosamente.', 'success')
+    return redirect(url_for('admin.dashboard'))
 

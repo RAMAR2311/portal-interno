@@ -23,6 +23,10 @@ def login():
         user = User.query.filter_by(email=email).first()
         
         if user and user.check_password(password):
+            if not getattr(user, 'is_active', True):
+                flash('Su acceso al portal ha sido revocado por retiro de la compañía.', 'danger')
+                return redirect(url_for('auth.login'))
+                
             login_user(user)
             
             # --- TIME TRACKING START ---

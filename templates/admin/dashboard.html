@@ -15,7 +15,7 @@
                 class="fas fa-bullhorn"></i> Publicar Comunicado</a>
 
 
-        <div class="card">
+        <div class="card mb-4">
             <div class="card-header">Gestión de Empleados y Nómina</div>
             <div class="card-body">
                 <table class="table table-hover">
@@ -24,16 +24,25 @@
                             <th>Nombre</th>
                             <th>Email</th>
                             <th>Cargo</th>
+                            <th>Estado</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for user in users %}
-                        <tr>
+                        <tr {% if not user.is_active %}style="opacity: 0.6;"{% endif %}>
                             <td>{{ user.nombre }}</td>
                             <td>{{ user.email }}</td>
                             <td>{{ user.cargo }}</td>
                             <td>
+                                <span id="badge-user-{{ user.id }}" class="badge {{ 'bg-success' if user.is_active else 'bg-danger' }}">
+                                    {{ 'Activo' if user.is_active else 'Retirado' }}
+                                </span>
+                            </td>
+                            <td>
+                                <button onclick="toggleUserStatus({{ user.id }})" class="btn btn-sm btn-outline-secondary me-1" title="Cambiar Estado">
+                                    <i class="fas fa-power-off"></i>
+                                </button>
                                 <a href="{{ url_for('admin.edit_user', user_id=user.id) }}"
                                     class="btn btn-warning btn-sm me-1" title="Editar">
                                     <i class="fas fa-edit"></i>
@@ -49,6 +58,95 @@
                 </table>
             </div>
         </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">Comunicados Publicados</div>
+            <div class="card-body">
+                {% if comunicados %}
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Título</th>
+                            <th>Destinatario</th>
+                            <th>Fecha</th>
+                            <th>Archivo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for comunicado in comunicados %}
+                        <tr>
+                            <td>{{ comunicado.titulo }}</td>
+                            <td>
+                                {% if comunicado.recipient %}
+                                    <span class="badge bg-secondary">{{ comunicado.recipient.nombre }}</span>
+                                {% else %}
+                                    <span class="badge bg-primary">Global</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ comunicado.fecha_publicacion.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                {% if comunicado.archivo %}
+                                    <a href="{{ url_for('static', filename='uploads/comunicados/' + comunicado.archivo) }}" target="_blank" class="btn btn-sm btn-outline-info" title="Ver archivo">
+                                        <i class="fas fa-paperclip"></i>
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted"><i class="fas fa-times"></i></span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form action="{{ url_for('admin.eliminar_comunicado', id=comunicado.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Estás seguro de eliminar este comunicado? Al hacerlo, también eliminarás cualquier archivo físico asociado del servidor. Esta acción no se puede deshacer.');">
+                                    <button type="submit" class="btn btn-danger btn-sm" title="Eliminar">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted text-center mb-0">No hay comunicados publicados actualmente.</p>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleUserStatus(userId) {
+    if (!confirm('¿Estás seguro de cambiar el estado de este usuario?')) return;
+    
+    fetch(`/admin/toggle_user_status/${userId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const badge = document.getElementById(`badge-user-${userId}`);
+            const row = badge.closest('tr');
+            if (data.is_active) {
+                badge.className = 'badge bg-success';
+                badge.textContent = 'Activo';
+                row.style.opacity = '1';
+            } else {
+                badge.className = 'badge bg-danger';
+                badge.textContent = 'Retirado';
+                row.style.opacity = '0.6';
+            }
+        } else {
+            alert(data.error || 'Error al cambiar el estado.');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Ocurrió un error en la conexión.');
+    });
+}
+</script>
 {% endblock %}

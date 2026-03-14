@@ -10,6 +10,13 @@ from flask_socketio import emit, join_room
 
 chat_bp = Blueprint('chat', __name__)
 
+@chat_bp.app_context_processor
+def inject_unread_count():
+    if current_user.is_authenticated:
+        unread_count = Message.query.filter_by(recipient_id=current_user.id, is_read=False).count()
+        return dict(unread_count=unread_count)
+    return dict(unread_count=0)
+
 online_users = set()
 
 @socketio.on('connect')
@@ -73,6 +80,40 @@ def handle_stop_typing(data):
         emit('stop_typing', payload, room=str(recipient_id))
 
 # --- Video Call Signaling ---
+
+@socketio.on('mark_as_read')
+def handle_mark_as_read(data):
+    if not current_user.is_authenticated:
+        return
+        
+    message_ids = data.get('message_ids', [])
+    if not message_ids:
+        return
+        
+    # Validamos que los mensajes sean para el usuario actual
+    messages = Message.query.filter(Message.id.in_(message_ids), Message.recipient_id == current_user.id).all()
+    
+    if not messages:
+        return
+        
+    from models import get_bogota_time
+    read_at_time = get_bogota_time()
+    
+    senders = {}
+    for msg in messages:
+        if not msg.is_read:
+            msg.is_read = True
+            msg.read_at = read_at_time
+            if msg.sender_id not in senders:
+                senders[msg.sender_id] = []
+            senders[msg.sender_id].append(msg.id)
+            
+    db.session.commit()
+    
+    # Notify senders that their messages were read
+    for sender_id, ids in senders.items():
+        emit('messages_read', {'message_ids': ids, 'recipient_id': current_user.id}, room=str(sender_id))
+
 # --- Advanced Group Video Call Signaling (Mesh Network) ---
 
 # Track active call occupancy: room_id -> set(socket_id)
@@ -245,6 +286,43 @@ def delete_group(group_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@chat_bp.route('/get_available_members/<int:group_id>')
+@login_required
+def get_available_members(group_id):
+    group = Group.query.get_or_404(group_id)
+    member_ids = [m.id for m in group.members]
+    available = User.query.filter(User.id.notin_(member_ids)).all()
+    
+    return jsonify({
+        'users': [{'id': u.id, 'nombre': u.nombre, 'cargo': u.cargo or ''} for u in available]
+    })
+
+@chat_bp.route('/add_members/<int:group_id>', methods=['POST'])
+@login_required
+def add_members(group_id):
+    group = Group.query.get_or_404(group_id)
+    
+    is_admin = current_user.rol == 'Admin'
+    is_creator = group.created_by == current_user.id
+    
+    if not (is_admin or is_creator):
+        return jsonify({'error': 'No tienes permiso para añadir miembros a este grupo'}), 403
+        
+    data = request.json
+    member_ids = data.get('members', [])
+    
+    if not member_ids:
+        return jsonify({'error': 'No se seleccionaron miembros'}), 400
+        
+    for user_id in member_ids:
+        user = User.query.get(user_id)
+        if user and user not in group.members:
+            group.members.append(user)
+            
+    db.session.commit()
+    
+    return jsonify({'status': 'success'})
+
 @chat_bp.route('/get_messages')
 @login_required
 def get_messages():
@@ -276,12 +354,7 @@ def get_messages():
     pagination = query.order_by(Message.timestamp.desc()).paginate(page=page, per_page=per_page, error_out=False)
     messages = pagination.items[::-1] # Reverse to show oldest first
     
-    # Mark received messages as read (only if looking at first page or all loaded)
-    # Ideally should only mark those visible, but for simplicity mark loaded ones.
-    for msg in messages:
-        if msg.recipient_id == current_user.id and not msg.is_read:
-            msg.is_read = True
-    db.session.commit()
+    # Don't auto-read here because frontend IntersectionObserver will handle it.
     
     # Get remaining unread count for the navbar badge
     unread_count = Message.query.filter_by(recipient_id=current_user.id, is_read=False).count()
@@ -298,6 +371,8 @@ def get_messages():
             'content': msg.content,
             'filename': msg.filename,
             'timestamp': msg.timestamp.strftime('%H:%M'),
+            'full_date': msg.timestamp.strftime('%Y-%m-%d'),
+            'is_read': msg.is_read,
             'is_me': msg.sender_id == current_user.id
         })
         
@@ -339,9 +414,12 @@ def send_message():
 
     # Emit Logic
     import pytz
-    bogota_time_str = datetime.now(pytz.timezone('America/Bogota')).strftime('%H:%M')
+    bogota_time = datetime.now(pytz.timezone('America/Bogota'))
+    bogota_time_str = bogota_time.strftime('%H:%M')
+    bogota_date_str = bogota_time.strftime('%Y-%m-%d')
     
     msg_payload = {
+        'id': new_msg.id,
         'sender_id': current_user.id,
         'sender_name': current_user.nombre,
         'recipient_id': recipient_id,
@@ -349,6 +427,8 @@ def send_message():
         'content': content,
         'filename': filename,
         'timestamp': bogota_time_str, # <--- FORZAMOS LA HORA EXACTA AQUÍ
+        'full_date': bogota_date_str,
+        'is_read': False,
         'is_me': False
     }
 

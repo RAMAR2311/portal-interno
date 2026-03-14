@@ -66,9 +66,9 @@
                         <a class="nav-link" href="{{ url_for('chat.index') }}">
                             Chat
                             <span id="unread-badge"
-                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger {% if unread_count == 0 %}d-none{% endif %}"
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger {% if not unread_count or unread_count == 0 %}d-none{% endif %}"
                                 style="font-size: 0.6em; top: 10px !important;">
-                                {{ unread_count }}
+                                {{ unread_count or 0 }}
                             </span>
                         </a>
                     </li>
