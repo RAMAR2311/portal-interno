@@ -158,3 +158,125 @@ class CalendarEvent(db.Model):
     attendees = db.relationship('User', secondary=event_attendees, lazy='subquery',
         backref=db.backref('attending_events', lazy=True))
 
+class PayrollAdvance(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    monto = db.Column(db.Numeric(12, 2), nullable=False)
+    motivo = db.Column(db.Text, nullable=False)
+    fecha_solicitud = db.Column(db.DateTime, default=get_bogota_time)
+    estado = db.Column(db.String(20), default='Pendiente') # 'Pendiente', 'Aprobado', 'Rechazado'
+    fecha_revision = db.Column(db.DateTime, nullable=True)
+    revisado_por = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+
+    # Note: Explicit foreign keys mapped to prevent AmbiguousForeignKeyError
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('payroll_advances', lazy=True))
+    admin_reviewer = db.relationship('User', foreign_keys=[revisado_por], lazy=True)
+
+
+class Survey(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(200), nullable=False)
+    descripcion = db.Column(db.Text, nullable=True)
+    creado_en = db.Column(db.DateTime, default=get_bogota_time)
+    esta_activa = db.Column(db.Boolean, default=True)
+
+    questions = db.relationship('SurveyQuestion', backref='survey', lazy=True, cascade='all, delete-orphan')
+    responses = db.relationship('SurveyResponse', backref='survey', lazy=True, cascade='all, delete-orphan')
+
+class SurveyQuestion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    survey_id = db.Column(db.Integer, db.ForeignKey('survey.id'), nullable=False)
+    texto_pregunta = db.Column(db.String(500), nullable=False)
+    tipo_respuesta = db.Column(db.String(50), nullable=False) # 'Texto', 'Opcion Multiple', 'Calificacion'
+
+    options = db.relationship('SurveyOption', backref='question', lazy=True, cascade='all, delete-orphan')
+
+class SurveyOption(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    question_id = db.Column(db.Integer, db.ForeignKey('survey_question.id'), nullable=False)
+    texto_opcion = db.Column(db.String(200), nullable=False)
+
+class SurveyResponse(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    survey_id = db.Column(db.Integer, db.ForeignKey('survey.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    respondido_en = db.Column(db.DateTime, default=get_bogota_time)
+
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('survey_responses', lazy=True))
+    answers = db.relationship('SurveyAnswer', backref='response', lazy=True, cascade='all, delete-orphan')
+
+class SurveyAnswer(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    response_id = db.Column(db.Integer, db.ForeignKey('survey_response.id'), nullable=False)
+    question_id = db.Column(db.Integer, db.ForeignKey('survey_question.id'), nullable=False)
+    respuesta_texto = db.Column(db.Text, nullable=True)
+
+    question = db.relationship('SurveyQuestion', foreign_keys=[question_id])
+
+class ActivePause(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(150), nullable=False)
+    descripcion = db.Column(db.Text, nullable=True)
+    url_video = db.Column(db.String(255), nullable=True)
+    duracion_minutos = db.Column(db.Integer, nullable=False, default=5)
+    creado_en = db.Column(db.DateTime, default=get_bogota_time)
+
+class PauseAssignment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    pause_id = db.Column(db.Integer, db.ForeignKey('active_pause.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    programado_para = db.Column(db.DateTime, nullable=True)
+    completado = db.Column(db.Boolean, default=False)
+    fecha_completado = db.Column(db.DateTime, nullable=True)
+
+    # Relationships
+    pause = db.relationship('ActivePause', backref='assignments', lazy=True)
+    user = db.relationship('User', foreign_keys=[user_id], backref='pauses_assigned', lazy=True)
+
+class Incapacidad(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    tipo = db.Column(db.String(50), nullable=False) # Enfermedad General, Accidente Laboral, Licencia
+    fecha_inicio = db.Column(db.Date, nullable=False)
+    fecha_fin = db.Column(db.Date, nullable=False)
+    dias_totales = db.Column(db.Integer, nullable=False)
+    diagnostico = db.Column(db.String(255), nullable=True)
+    entidad_salud = db.Column(db.String(100), nullable=True) # EPS o ARL
+    archivo_soporte = db.Column(db.String(255), nullable=False)
+    fecha_reporte = db.Column(db.DateTime, default=get_bogota_time)
+    estado = db.Column(db.String(20), default='Pendiente') # Pendiente, Validada, Rechazada
+    comentarios_admin = db.Column(db.Text, nullable=True)
+    
+    # Relationship
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('incapacidades', lazy=True))
+
+class WeeklySchedule(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    dia_semana = db.Column(db.Integer, nullable=False) # 0=Lunes, 1=Martes... 6=Domingo
+    hora_entrada = db.Column(db.Time, nullable=True)
+    hora_salida = db.Column(db.Time, nullable=True)
+    es_dia_laboral = db.Column(db.Boolean, default=True)
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'dia_semana', name='uq_user_dia_semana'),
+    )
+
+class LeaveRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    tipo_permiso = db.Column(db.String(50), nullable=False) # Vacaciones, Cita Médica, Calamidad, Otro
+    fecha_inicio = db.Column(db.Date, nullable=False)
+    fecha_fin = db.Column(db.Date, nullable=False)
+    motivo = db.Column(db.Text, nullable=False)
+    estado = db.Column(db.String(20), default='Pendiente') # Pendiente, Aprobado, Rechazado
+    fecha_solicitud = db.Column(db.DateTime, default=get_bogota_time)
+    aprobado_por = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('leave_requests', lazy=True))
+    aprobador = db.relationship('User', foreign_keys=[aprobado_por])
+
+
+

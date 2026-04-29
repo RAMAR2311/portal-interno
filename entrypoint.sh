@@ -8,10 +8,7 @@ done
 echo "PostgreSQL listo"
 
 # Crear las tablas automáticamente (Versión corregida para una sola línea)
-python3 -c "from app import app, db; app.app_context().push(); db.create_all()"
-
-# Crear el admin por defecto
-python3 seed_admin.py
+# Las tablas ahora se gestionan mediante flask-migrate (Alembic)
 
 # Iniciar la app con Eventlet
 exec gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:8000 app:app

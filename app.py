@@ -2,6 +2,10 @@ import eventlet
 eventlet.monkey_patch()
 
 import os
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde .env
+load_dotenv()
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -87,4 +91,8 @@ if __name__ == '__main__':
             db.session.commit()
             print("Admin user created: admin@portal.com / admin123")
             
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    # Cambiamos a 127.0.0.1 para que en Windows sea más fácil hacer clic en el enlace
+    print("\n--- Servidor iniciado ---")
+    print("Para acceder al portal, abre tu navegador en: http://localhost:5000")
+    print("--------------------------\n")
+    socketio.run(app, host='127.0.0.1', port=5000, debug=True)

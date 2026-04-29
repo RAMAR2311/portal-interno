@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col-md-12 d-flex justify-content-between align-items-center">
+            <h3><i class="fas fa-user-clock text-warning"></i> Asignar Pausa Activa</h3>
+            <div>
+                <a href="{{ url_for('admin.pausas_crear') }}" class="btn btn-success me-2">
+                    <i class="fas fa-plus"></i> Nueva Rutina
+                </a>
+                <a href="{{ url_for('admin.pausas_reporte') }}" class="btn btn-outline-info">
+                    <i class="fas fa-chart-bar"></i> Ver Reportes
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card shadow-sm border-0 mb-4 bg-light">
+        <div class="card-body">
+            <h5 class="card-title fw-bold">Lanzar o Programar Pausa</h5>
+            <form action="{{ url_for('admin.pausas_asignar') }}" method="POST" id="formAsignacion">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Empleado</label>
+                        <select name="user_id" class="form-select" required>
+                            <option value="">Seleccione...</option>
+                            {% for emp in empleados %}
+                            <option value="{{ emp.id }}">{{ emp.nombre }} - {{ emp.cargo }} ({{ emp.current_status }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Rutina de Pausa</label>
+                        <select name="pause_id" class="form-select" required>
+                            <option value="">Seleccione...</option>
+                            {% for p in pausas %}
+                            <option value="{{ p.id }}">{{ p.titulo }} ({{ p.duracion_minutos }} min)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-warning w-100" onclick="document.getElementById('hdnLanzarAhora').value='true'; return confirm('¿Lanzar pausa INMEDIATAMENTE a este empleado? Se interrumpirá su trabajo.');">
+                            <i class="fas fa-bolt"></i> Lanzar Ahora
+                        </button>
+                    </div>
+                </div>
+                <!-- Support for scheduled pause will be processed server-side but UI simplified to Launch Now as requested immediately in requirements -->
+                <input type="hidden" name="lanzar_ahora" id="hdnLanzarAhora" value="false">
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white">
+            <h5 class="mb-0 fw-bold">Rutinas Disponibles</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Título</th>
+                            <th>Duración</th>
+                            <th>Video</th>
+                            <th>Creado en</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in pausas %}
+                        <tr>
+                            <td>{{ p.titulo }}</td>
+                            <td>{{ p.duracion_minutos }} m</td>
+                            <td>
+                                {% if p.url_video %}
+                                <a href="{{ p.url_video }}" target="_blank" class="text-danger"><i class="fab fa-youtube"></i> Ver Video</a>
+                                {% else %}
+                                <span class="text-muted">Ninguno</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ p.creado_en.strftime('%Y-%m-%d') }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center py-3 text-muted">No hay rutinas creadas aún.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

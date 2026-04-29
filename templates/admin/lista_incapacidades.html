@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card shadow border-0">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0"><i class="fas fa-notes-medical me-2"></i>Gestión de Incapacidades y Reportes Médicos</h4>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Empleado</th>
+                        <th>Tipo / Diagnóstico</th>
+                        <th>Periodo</th>
+                        <th>Días</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inc in incapacidades %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold">{{ inc.user.nombre }}</div>
+                            <small class="text-muted">{{ inc.user.cargo }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-info text-white">{{ inc.tipo }}</span><br>
+                            <small class="text-truncate d-inline-block" style="max-width: 200px;">{{ inc.diagnostico }}</small>
+                        </td>
+                        <td>
+                            <small>{{ inc.fecha_inicio.strftime('%d/%m/%Y') }} - {{ inc.fecha_fin.strftime('%d/%m/%Y') }}</small>
+                        </td>
+                        <td class="text-center fw-bold">{{ inc.dias_totales }}</td>
+                        <td>
+                            {% if inc.estado == 'Pendiente' %}
+                            <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% elif inc.estado == 'Validada' %}
+                            <span class="badge bg-success">Validada</span>
+                            {% else %}
+                            <span class="badge bg-danger">Rechazada</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group">
+                                <a href="{{ url_for('admin.descargar_incapacidad', id=inc.id) }}" class="btn btn-outline-dark btn-sm" title="Descargar Soporte" target="_blank">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                                {% if inc.estado == 'Pendiente' %}
+                                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#validateModal{{ inc.id }}" title="Validar">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+
+                            <!-- Modal Validación -->
+                            <div class="modal fade text-start" id="validateModal{{ inc.id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form action="{{ url_for('admin.validar_incapacidad', id=inc.id) }}" method="POST">
+                                            <div class="modal-header bg-dark text-white">
+                                                <h5 class="modal-title">Validar Incapacidad</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Estás validando el reporte de <strong>{{ inc.user.nombre }}</strong>.</p>
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Acción</label>
+                                                    <select name="estado" class="form-select">
+                                                        <option value="Validada">Aprobar / Validar</option>
+                                                        <option value="Rechazada">Rechazar</option>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Comentarios (Opcional)</label>
+                                                    <textarea name="comentarios" class="form-control" rows="3"></textarea>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not incapacidades %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem;"></i>
+                            <p class="text-muted">No hay incapacidades pendientes de revisión.</p>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

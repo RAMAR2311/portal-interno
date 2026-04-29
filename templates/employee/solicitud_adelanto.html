@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card shadow-lg">
+            <div class="card-header bg-transparent border-0 pt-4 pb-0">
+                <h3 class="text-center mb-0">
+                    <i class="fas fa-hand-holding-usd text-warning me-2"></i> Solicitar Adelanto
+                </h3>
+            </div>
+            <div class="card-body p-4">
+                <div class="alert alert-info">
+                    Monto máximo disponible: <strong>${{ "%.2f"|format(max_monto) }}</strong>
+                </div>
+                
+                <form method="POST" action="{{ url_for('employee.solicitar_adelanto') }}" id="adelantoForm">
+                    <div class="mb-3">
+                        <label for="monto" class="form-label">Monto a solicitar (COP)</label>
+                        <input type="number" class="form-control" id="monto" name="monto" required min="1" max="{{ max_monto }}" step="0.01" placeholder="Ej: 50000">
+                        <div class="invalid-feedback">El monto no puede exceder su límite de ${{ "%.2f"|format(max_monto) }}.</div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="motivo" class="form-label">Motivo</label>
+                        <textarea class="form-control" id="motivo" name="motivo" required rows="3" placeholder="Explique brevemente el motivo..."></textarea>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary fw-bold py-2">Enviar Solicitud</button>
+                        <a href="{{ url_for('employee.dashboard') }}" class="btn btn-secondary mt-2 py-2">Volver</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        {% if advances %}
+        <div class="card shadow-lg mt-4">
+            <div class="card-header bg-transparent border-0 pt-4 pb-0">
+                <h5 class="mb-0"><i class="fas fa-history text-warning me-2"></i> Mis Solicitudes Recientes</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Monto</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for adv in advances %}
+                            <tr>
+                                <td>{{ adv.fecha_solicitud.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>${{ "%.2f"|format(adv.monto) }}</td>
+                                <td>
+                                    {% if adv.estado == 'Pendiente' %}
+                                        <span class="badge bg-warning text-dark">{{ adv.estado }}</span>
+                                    {% elif adv.estado == 'Aprobado' %}
+                                        <span class="badge bg-success">{{ adv.estado }}</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">{{ adv.estado }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('adelantoForm').addEventListener('submit', function(e) {
+        var montoInput = document.getElementById('monto');
+        var maxMonto = parseFloat(montoInput.getAttribute('max'));
+        var val = parseFloat(montoInput.value);
+        if(val > maxMonto) {
+            e.preventDefault();
+            montoInput.classList.add('is-invalid');
+        } else {
+            montoInput.classList.remove('is-invalid');
+        }
+    });
+</script>
+{% endblock %}

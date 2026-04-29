@@ -100,7 +100,7 @@ def augment_logs_with_duration(logs):
     return processed[::-1]
 
 def calculate_fortnight_debt(user_id):
-    """Calculates total debt for the current fortnight."""
+    """Calculates total debt for the current fortnight based on WeeklySchedule."""
     start_date, end_date = get_fortnight_range()
     
     logs = TimeLog.query.filter(
@@ -112,10 +112,7 @@ def calculate_fortnight_debt(user_id):
     if not logs:
         return "0m"
 
-    # We reuse the logic effectively, but we must group by day
-    # First, get durations
     augmented = augment_logs_with_duration(logs) 
-    # augmented is DESC, let's reverse to ASC for daily processing
     daily_items = augmented[::-1] 
     
     logs_by_date = {}
@@ -124,34 +121,41 @@ def calculate_fortnight_debt(user_id):
         if d not in logs_by_date: logs_by_date[d] = []
         logs_by_date[d].append(item)
     
+    from models import WeeklySchedule, LeaveRequest
+    schedules = WeeklySchedule.query.filter_by(user_id=user_id).all()
+    schedule_map = { s.dia_semana: s for s in schedules }
+    
+    # NEW: Optener permisos aprobados para omitir sus dias
+    permisos_aprobados = LeaveRequest.query.filter_by(user_id=user_id, estado='Aprobado').all()
+    
     total_debt_seconds = 0
     now_date = get_bogota_time().date()
 
     for d, items in logs_by_date.items():
-        # 1. Late Start (> 8:30 AM)
-        first_active = next((x for x in items if x['log'].new_status == 'Activo'), None)
-        if first_active:
-            # Construct 8:30 on that day. careful with timezones.
-            # item['timestamp'] has the tz info of the log.
-            limit_830 = item['timestamp'].replace(hour=8, minute=30, second=0, microsecond=0)
-            if item['timestamp'] > limit_830:
-                total_debt_seconds += (item['timestamp'] - limit_830).total_seconds()
+        # Validar si el día tiene permiso aprobado
+        tiene_permiso = any(p.fecha_inicio <= d <= p.fecha_fin for p in permisos_aprobados)
+        if tiene_permiso:
+            continue
+            
+        dia_semana_idx = d.weekday()
+        schedule = schedule_map.get(dia_semana_idx)
         
-        # 2. Early Departure (< 4:30 PM) - Only for past days
-        if d < now_date:
-            last_item = items[-1] # Last log of the day
-            # If they didn't logout, last item is whatever status. 
-            # If they did logout, last status is Inactivo.
-            # We assume the END of the last event is the 'departure time'.
-            # If last event was 'Inactivo', departure was at timestamp.
-            # If last event was 'Activo' (forgot to logout), technically they left at ??? 
-            # Let's assume strict rule: Reference point is the timestamp of the LAST log entry.
-            
-            limit_1630 = last_item['timestamp'].replace(hour=16, minute=30, second=0, microsecond=0)
-            
-            # If the last log happened before 16:30
-            if last_item['timestamp'] < limit_1630:
-                total_debt_seconds += (limit_1630 - last_item['timestamp']).total_seconds()
+        if not schedule or not schedule.es_dia_laboral:
+            continue
+
+        # 1. Late Start
+        first_active = next((x for x in items if x['log'].new_status == 'Activo'), None)
+        if first_active and schedule.hora_entrada:
+            limit_start = first_active['timestamp'].replace(hour=schedule.hora_entrada.hour, minute=schedule.hora_entrada.minute, second=0, microsecond=0)
+            if first_active['timestamp'] > limit_start:
+                total_debt_seconds += (first_active['timestamp'] - limit_start).total_seconds()
+        
+        # 2. Early Departure
+        if d < now_date and schedule.hora_salida:
+            last_item = items[-1] 
+            limit_end = last_item['timestamp'].replace(hour=schedule.hora_salida.hour, minute=schedule.hora_salida.minute, second=0, microsecond=0)
+            if last_item['timestamp'] < limit_end:
+                total_debt_seconds += (limit_end - last_item['timestamp']).total_seconds()
 
         # 3. Cumulative Break Debt
         total_break = sum(x['duration_seconds'] for x in items if x['log'].new_status == 'En Break')
@@ -575,4 +579,372 @@ def eliminar_comunicado(id):
     
     flash('Comunicado eliminado exitosamente.', 'success')
     return redirect(url_for('admin.dashboard'))
+
+from models import PayrollAdvance
+
+@admin_bp.route('/adelantos')
+@login_required
+def gestionar_adelantos():
+    if current_user.rol != 'Admin':
+        return redirect(url_for('employee.dashboard'))
+    advances = PayrollAdvance.query.order_by(PayrollAdvance.fecha_solicitud.desc()).all()
+    return render_template('admin/gestionar_adelantos.html', advances=advances)
+
+@admin_bp.route('/adelantos/<int:id>/<string:action>', methods=['POST'])
+@login_required
+def process_adelanto(id, action):
+    if current_user.rol != 'Admin':
+        return jsonify({'error': 'No autorizado'}), 403
+    
+    success, msg = PayrollService.process_advance(id, current_user.id, action)
+    if success:
+        flash(msg, "success")
+    else:
+        flash(msg, "danger")
+    
+    return redirect(url_for('admin.gestionar_adelantos'))
+
+from sqlalchemy.orm import joinedload
+from models import Survey, SurveyQuestion, SurveyOption, SurveyResponse, SurveyAnswer
+
+@admin_bp.route('/surveys')
+@login_required
+def surveys_list():
+    if current_user.rol != 'Admin':
+        return redirect(url_for('employee.dashboard'))
+    surveys = Survey.query.order_by(Survey.creado_en.desc()).all()
+    return render_template('admin/surveys_list.html', surveys=surveys)
+
+@admin_bp.route('/surveys/create', methods=['GET', 'POST'])
+@login_required
+def create_survey():
+    if current_user.rol != 'Admin':
+        return redirect(url_for('employee.dashboard'))
+    
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            titulo = data.get('titulo')
+            descripcion = data.get('descripcion')
+            
+            if not titulo:
+                return jsonify({'status': 'error', 'message': 'El título es requerido.'}), 400
+                
+            survey = Survey(titulo=titulo, descripcion=descripcion)
+            db.session.add(survey)
+            db.session.flush()
+            
+            for q_data in data.get('questions', []):
+                question = SurveyQuestion(
+                    survey_id=survey.id,
+                    texto_pregunta=q_data['texto_pregunta'],
+                    tipo_respuesta=q_data['tipo_respuesta']
+                )
+                db.session.add(question)
+                db.session.flush()
+                
+                if q_data['tipo_respuesta'] == 'Opcion Multiple':
+                    for opt_text in q_data.get('opciones', []):
+                        if opt_text.strip():
+                            db.session.add(SurveyOption(question_id=question.id, texto_opcion=opt_text.strip()))
+                            
+            db.session.commit()
+            return jsonify({'status': 'success', 'message': 'Encuesta creada exitosamente.', 'redirect': url_for('admin.surveys_list')})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'status': 'error', 'message': str(e)}), 400
+            
+    return render_template('admin/survey_builder.html')
+
+@admin_bp.route('/surveys/<int:survey_id>/toggle', methods=['POST'])
+@login_required
+def toggle_survey(survey_id):
+    if current_user.rol != 'Admin':
+         return jsonify({'error': 'No autorizado'}), 403
+    survey = Survey.query.get_or_404(survey_id)
+    survey.esta_activa = not survey.esta_activa
+    db.session.commit()
+    flash('Estado de encuesta actualizado.', 'success')
+    return redirect(url_for('admin.surveys_list'))
+
+@admin_bp.route('/surveys/results/<int:survey_id>')
+@login_required
+def survey_results(survey_id):
+    if current_user.rol != 'Admin':
+        return redirect(url_for('employee.dashboard'))
+
+    survey = Survey.query.options(
+        joinedload(Survey.questions).joinedload(SurveyQuestion.options)
+    ).get_or_404(survey_id)
+
+    responses = SurveyResponse.query.options(
+        joinedload(SurveyResponse.user),
+        joinedload(SurveyResponse.answers).joinedload(SurveyAnswer.question)
+    ).filter_by(survey_id=survey_id).order_by(SurveyResponse.respondido_en.desc()).all()
+
+    return render_template('admin/survey_results.html', survey=survey, responses=responses)
+
+# --- RUTAS PARA PAUSAS ACTIVAS ---
+from models import ActivePause, PauseAssignment
+
+@admin_bp.route('/pausas/crear', methods=['GET', 'POST'])
+@login_required
+def pausas_crear():
+    if current_user.rol != 'Admin':
+        return redirect(url_for('employee.dashboard'))
+    
+    if request.method == 'POST':
+        titulo = request.form.get('titulo')
+        descripcion = request.form.get('descripcion')
+        url_video = request.form.get('url_video')
+        duracion_minutos = int(request.form.get('duracion_minutos') or 5)
+        
+        pausa = ActivePause(titulo=titulo, descripcion=descripcion, url_video=url_video, duracion_minutos=duracion_minutos)
+        db.session.add(pausa)
+        db.session.commit()
+        flash('Pausa Activa creada exitosamente.', 'success')
+        return redirect(url_for('admin.pausas_asignar'))
+        
+    return render_template('admin/pausas_crear.html')
+
+@admin_bp.route('/pausas/asignar', methods=['GET', 'POST'])
+@login_required
+def pausas_asignar():
+    if current_user.rol != 'Admin':
+        return redirect(url_for('employee.dashboard'))
+        
+    if request.method == 'POST':
+        pause_id = request.form.get('pause_id')
+        user_id = request.form.get('user_id')
+        hora_str = request.form.get('hora_programada') # Hired as HH:MM format typically, ignored for "Lanzar Ahora"
+        lanzar_ahora = request.form.get('lanzar_ahora') == 'true'
+        
+        asignacion = PauseAssignment(pause_id=pause_id, user_id=user_id)
+        
+        if not lanzar_ahora and hora_str:
+            ahora = get_bogota_time()
+            hora = datetime.strptime(hora_str, '%H:%M').time()
+            asignacion.programado_para = datetime.combine(ahora.date(), hora)
+            
+        db.session.add(asignacion)
+        db.session.commit()
+        
+        if lanzar_ahora:
+            from extensions import socketio
+            pausa = ActivePause.query.get(pause_id)
+            socketio.emit('trigger_active_pause', {
+                'assignment_id': asignacion.id,
+                'titulo': pausa.titulo,
+                'descripcion': pausa.descripcion,
+                'url_video': pausa.url_video,
+                'duracion_minutos': pausa.duracion_minutos
+            }, room=str(user_id))
+            flash('Pausa Activa lanzada inmediatamente.', 'success')
+        else:
+            flash('Pausa Activa programada exitosamente.', 'success')
+            
+        return redirect(url_for('admin.pausas_asignar'))
+        
+    pausas = ActivePause.query.order_by(ActivePause.creado_en.desc()).all()
+    empleados = User.query.filter(User.rol != 'Admin', User.is_active == True).all()
+    return render_template('admin/pausas_asignar.html', pausas=pausas, empleados=empleados)
+
+@admin_bp.route('/pausas/reporte')
+@login_required
+def pausas_reporte():
+    if current_user.rol != 'Admin':
+        return redirect(url_for('employee.dashboard'))
+    asignaciones = PauseAssignment.query.order_by(PauseAssignment.id.desc()).all()
+    return render_template('admin/pausas_reporte.html', asignaciones=asignaciones)
+
+@admin_bp.route('/pausas/lanzar/<int:id>', methods=['POST'])
+@login_required
+def pausas_lanzar(id):
+    if current_user.rol != 'Admin':
+        return jsonify({'error': 'No autorizado'}), 403
+    asignacion = PauseAssignment.query.get_or_404(id)
+    pausa = asignacion.pause
+    
+    from extensions import socketio
+    socketio.emit('trigger_active_pause', {
+        'assignment_id': asignacion.id,
+        'titulo': pausa.titulo,
+        'descripcion': pausa.descripcion,
+        'url_video': pausa.url_video,
+        'duracion_minutos': pausa.duracion_minutos
+    }, room=str(asignacion.user_id))
+    
+    return jsonify({'status': 'success', 'message': 'Pausa lanzada'})
+
+# --- RUTAS PARA GESTIÓN DE INCAPACIDADES ---
+from models import Incapacidad
+from flask import send_from_directory
+
+@admin_bp.route('/incapacidades')
+@login_required
+def incapacidades_lista():
+    if current_user.rol != 'Admin':
+        return redirect(url_for('employee.dashboard'))
+    incapacidades = Incapacidad.query.order_by(Incapacidad.fecha_reporte.desc()).all()
+    return render_template('admin/lista_incapacidades.html', incapacidades=incapacidades)
+
+@admin_bp.route('/incapacidades/validar/<int:id>', methods=['POST'])
+@login_required
+def validar_incapacidad(id):
+    if current_user.rol != 'Admin':
+        return jsonify({'error': 'No autorizado'}), 403
+        
+    incapacidad = Incapacidad.query.get_or_404(id)
+    nuevo_estado = request.form.get('estado')
+    comentarios = request.form.get('comentarios', '')
+    
+    if nuevo_estado in ['Validada', 'Rechazada']:
+        incapacidad.estado = nuevo_estado
+        incapacidad.comentarios_admin = comentarios
+        db.session.commit()
+        flash(f'Incapacidad marcada como {nuevo_estado}.', 'success')
+    else:
+        flash('Estado inválido.', 'danger')
+        
+    return redirect(url_for('admin.incapacidades_lista'))
+
+@admin_bp.route('/incapacidades/descargar/<int:id>')
+@login_required
+def descargar_incapacidad(id):
+    if current_user.rol != 'Admin':
+        return redirect(url_for('employee.dashboard'))
+        
+    incapacidad = Incapacidad.query.get_or_404(id)
+    directory = os.path.join(current_app.config['UPLOAD_FOLDER'], 'incapacidades')
+    return send_from_directory(directory, incapacidad.archivo_soporte, as_attachment=True)
+
+# --- RUTAS PARA GESTIÓN DE HORARIOS ---
+from models import WeeklySchedule
+from datetime import datetime
+
+@admin_bp.route('/horarios', methods=['GET'])
+@login_required
+def horarios_lista():
+    if current_user.rol != 'Admin':
+        return redirect(url_for('employee.dashboard'))
+    empleados = User.query.filter(User.rol == 'Empleado', User.is_active == True).all()
+    # Para saber si tienen horario asignado, precargamos
+    for e in empleados:
+        tiene_horario = WeeklySchedule.query.filter_by(user_id=e.id).first()
+        e.tiene_horario = bool(tiene_horario)
+    return render_template('admin/horarios_lista.html', empleados=empleados)
+
+@admin_bp.route('/horarios/asignar/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+def horarios_asignar(user_id):
+    if current_user.rol != 'Admin':
+        return redirect(url_for('employee.dashboard'))
+        
+    empleado = User.query.get_or_404(user_id)
+    dias_nombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    
+    if request.method == 'POST':
+        try:
+            for i in range(7):
+                es_laboral = request.form.get(f'laboral_{i}') == 'on'
+                hora_entrada_str = request.form.get(f'entrada_{i}')
+                hora_salida_str = request.form.get(f'salida_{i}')
+                
+                schedule = WeeklySchedule.query.filter_by(user_id=user_id, dia_semana=i).first()
+                if not schedule:
+                    schedule = WeeklySchedule(user_id=user_id, dia_semana=i)
+                    db.session.add(schedule)
+                
+                schedule.es_dia_laboral = es_laboral
+                
+                if es_laboral and hora_entrada_str and hora_salida_str:
+                    schedule.hora_entrada = datetime.strptime(hora_entrada_str, '%H:%M').time()
+                    schedule.hora_salida = datetime.strptime(hora_salida_str, '%H:%M').time()
+                else:
+                    schedule.hora_entrada = None
+                    schedule.hora_salida = None
+                    
+            db.session.commit()
+            flash('Horario guardado correctamente.', 'success')
+            return redirect(url_for('admin.horarios_lista'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al guardar horario: {str(e)}', 'danger')
+            
+    # GET
+    schedules_raw = WeeklySchedule.query.filter_by(user_id=user_id).order_by(WeeklySchedule.dia_semana).all()
+    schedules = {s.dia_semana: s for s in schedules_raw}
+    
+    # Rellenar faltantes
+    horario_formato = []
+    for i in range(7):
+        s = schedules.get(i)
+        horario_formato.append({
+            'index': i,
+            'dia': dias_nombres[i],
+            'es_laboral': s.es_dia_laboral if s else (i < 5), # L-V difiere por defecto
+            'entrada': s.hora_entrada.strftime('%H:%M') if s and s.hora_entrada else '',
+            'salida': s.hora_salida.strftime('%H:%M') if s and s.hora_salida else ''
+        })
+        
+    return render_template('admin/schedule_form.html', empleado=empleado, horario=horario_formato)
+
+# --- RUTAS DE GESTIÓN DE PERMISOS ---
+from models import LeaveRequest, CalendarEvent
+import pytz
+
+@admin_bp.route('/permisos', methods=['GET'])
+@login_required
+def permisos_lista():
+    if current_user.rol != 'Admin':
+        return redirect(url_for('employee.dashboard'))
+    permisos = LeaveRequest.query.order_by(LeaveRequest.fecha_solicitud.desc()).all()
+    return render_template('admin/lista_permisos.html', permisos=permisos)
+
+@admin_bp.route('/permisos/gestionar/<int:id>', methods=['POST'])
+@login_required
+def gestionar_permiso(id):
+    if current_user.rol != 'Admin':
+        return jsonify({'error': 'No autorizado'}), 403
+        
+    permiso = LeaveRequest.query.get_or_404(id)
+    nuevo_estado = request.form.get('estado')
+    
+    if nuevo_estado in ['Aprobado', 'Rechazado']:
+        permiso.estado = nuevo_estado
+        permiso.aprobado_por = current_user.id
+        
+        # Automatización: Si se aprueba, crear evento en el calendario global
+        if nuevo_estado == 'Aprobado':
+            start_dt = datetime.combine(permiso.fecha_inicio, datetime.min.time())
+            end_dt = datetime.combine(permiso.fecha_fin, datetime.max.time())
+            
+            calendar_event = CalendarEvent(
+                user_id=permiso.user_id,
+                title=f"Fuera de Oficina: {permiso.user.nombre} ({permiso.tipo_permiso})",
+                start=start_dt,
+                end=end_dt,
+                type="Fuera de Oficina",
+                description=permiso.motivo,
+                is_private=False
+            )
+            db.session.add(calendar_event)
+            # Notificará como recordatorio si se asiste todo el equipo o es global
+            
+        db.session.commit()
+        
+        # Emitir Socket al empleado para notificarle del cambio
+        from extensions import socketio
+        socketio.emit('leave_request_update', {
+            'tipo': permiso.tipo_permiso,
+            'estado': nuevo_estado,
+        }, room=str(permiso.user_id))
+        
+        flash(f'Permiso {nuevo_estado.lower()}.', 'success')
+    else:
+        flash('Estado inválido.', 'danger')
+        
+    return redirect(url_for('admin.permisos_lista'))
+
+
 

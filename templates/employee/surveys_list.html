@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="mt-4 mb-4">
+    <h2><i class="fas fa-clipboard-list text-warning me-2"></i> Mis Encuestas</h2>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <h4 class="mb-3"><i class="fas fa-hourglass-half text-info me-2"></i> Pendientes por Responder</h4>
+        {% for survey in pending %}
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h5>{{ survey.titulo }}</h5>
+                <p class="text-muted small mb-3">{{ survey.descripcion }}</p>
+                <a href="{{ url_for('employee.take_survey', survey_id=survey.id) }}" class="btn btn-primary btn-sm fw-bold px-3">
+                    <i class="fas fa-pen me-1"></i> Responder
+                </a>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-check-circle me-2"></i> Estás al día. No tienes encuestas pendientes.
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <h4 class="mb-3"><i class="fas fa-check-double text-success me-2"></i> Completadas</h4>
+        {% for survey in answered %}
+        <div class="card shadow-sm mb-3" style="border-left: 4px solid #198754 !important;">
+            <div class="card-body py-3">
+                <h6 class="mb-1">{{ survey.titulo }}</h6>
+                <div class="text-success small fw-bold"><i class="fas fa-check me-1"></i> Enviada correctamente</div>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-muted ms-2">Aún no has respondido encuestas.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

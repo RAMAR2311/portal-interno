@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-md-5">
+        <div class="card shadow border-0">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-file-medical me-2"></i>Reportar Incapacidad</h4>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('employee.reportar_incapacidad') }}" method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tipo de Incapacidad</label>
+                        <select name="tipo" class="form-select" required>
+                            <option value="Enfermedad General">Enfermedad General</option>
+                            <option value="Accidente de Trabajo">Accidente de Trabajo</option>
+                            <option value="Maternidad/Paternidad">Maternidad/Paternidad</option>
+                            <option value="Cita Médica">Cita Médica</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Fecha Inicio</label>
+                            <input type="date" name="fecha_inicio" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Fecha Fin</label>
+                            <input type="date" name="fecha_fin" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Entidad de Salud (EPS/ARL)</label>
+                        <input type="text" name="entidad_salud" class="form-control" placeholder="Ej: Sura, Sanitas..." required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Diagnóstico / Motivo</label>
+                        <textarea name="diagnostico" class="form-control" rows="3" placeholder="Breve descripción..." required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Soporte Médico (PDF o Imagen)</label>
+                        <input type="file" name="archivo_soporte" class="form-control" accept=".pdf,.png,.jpg,.jpeg" required>
+                        <small class="text-muted">Es obligatorio adjuntar el documento oficial.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-paper-plane me-2"></i>Enviar Reporte
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card shadow border-0">
+            <div class="card-header bg-dark text-white">
+                <h4 class="mb-0"><i class="fas fa-history me-2"></i>Mis Reportes</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Días</th>
+                                <th>Estado</th>
+                                <th class="text-center">Soporte</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inc in incapacidades %}
+                            <tr>
+                                <td><small>{{ inc.fecha_inicio.strftime('%d/%m/%Y') }}</small></td>
+                                <td><span class="badge bg-light text-dark">{{ inc.tipo }}</span></td>
+                                <td>{{ inc.dias_totales }}</td>
+                                <td>
+                                    {% if inc.estado == 'Pendiente' %}
+                                    <span class="badge bg-warning text-dark">Pendiente</span>
+                                    {% elif inc.estado == 'Validada' %}
+                                    <span class="badge bg-success">Validada</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Rechazada</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <a href="{{ url_for('admin.descargar_incapacidad', id=inc.id) }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                        <i class="fas fa-file-download"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if not incapacidades %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">No has reportado incapacidades.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

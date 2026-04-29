@@ -141,6 +141,32 @@
             </ul>
         </div>
 
+        <!-- Mi Horario -->
+        <div class="card mb-4 border-0 shadow-sm">
+            <div class="card-header bg-white align-items-center">
+                <span class="text-uppercase small fw-bold text-primary"><i class="fas fa-calendar-check me-2"></i> Mi Horario Semanal</span>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush small">
+                    {% set dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'] %}
+                    {% for h in mi_horario %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent border-light">
+                        <span class="fw-bold">{{ dias[h.dia_semana] }}</span>
+                        {% if h.es_dia_laboral %}
+                            <span class="text-muted">{{ h.hora_entrada.strftime('%H:%M') }} - {{ h.hora_salida.strftime('%H:%M') }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Descanso</span>
+                        {% endif %}
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-center text-muted">
+                        No tienes horario asignado.
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
         <!-- Info Tabs -->
         <div class="card mb-4">
             <div class="card-header">

@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mt-4 mb-4">
+    <h2 class="text-white mb-0"><i class="fas fa-hand-holding-usd text-warning me-2"></i> Gestionar Adelantos de Nómina</h2>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-light">Volver al Dashboard</a>
+</div>
+
+<div class="card glass-card border-0 shadow-lg" style="background-color: var(--card-bg); border: 1px solid var(--border-color) !important;">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0 align-middle">
+                <thead class="table-dark-header">
+                    <tr>
+                        <th class="ps-4">Empleado</th>
+                        <th>Fecha Solicitud</th>
+                        <th>Monto</th>
+                        <th>Motivo</th>
+                        <th>Estado</th>
+                        <th class="text-center pe-4">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for adv in advances %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center">
+                                {% if adv.user.foto_perfil %}
+                                <img src="{{ url_for('static', filename='uploads/profile_pics/' + adv.user.foto_perfil) }}" 
+                                     alt="Perfil" class="rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover;">
+                                {% else %}
+                                <div class="rounded-circle bg-secondary d-flex justify-content-center align-items-center me-3" style="width: 40px; height: 40px;">
+                                    <i class="fas fa-user text-white"></i>
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <h6 class="mb-0 text-white">{{ adv.user.nombre }}</h6>
+                                    <small class="text-white-50">{{ adv.user.cargo }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ adv.fecha_solicitud.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td class="fw-bold text-warning">${{ "%.2f"|format(adv.monto) }}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="popover" title="Motivo" data-bs-content="{{ adv.motivo }}">
+                                <i class="fas fa-comment-dots"></i> Ver
+                            </button>
+                        </td>
+                        <td>
+                            {% if adv.estado == 'Pendiente' %}
+                                <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i> Pendiente</span>
+                            {% elif adv.estado == 'Aprobado' %}
+                                <span class="badge bg-success"><i class="fas fa-check me-1"></i> Aprobado</span>
+                            {% else %}
+                                <span class="badge bg-danger"><i class="fas fa-times me-1"></i> Rechazado</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center pe-4">
+                            {% if adv.estado == 'Pendiente' %}
+                            <div class="d-flex justify-content-center gap-2">
+                                <form method="POST" action="{{ url_for('admin.process_adelanto', id=adv.id, action='aprobar') }}" class="d-inline">
+                                    <button type="submit" class="btn btn-success btn-sm" title="Aprobar" onclick="return confirm('¿Confirmar aprobación del adelanto?');">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('admin.process_adelanto', id=adv.id, action='rechazar') }}" class="d-inline">
+                                    <button type="submit" class="btn btn-danger btn-sm" title="Rechazar" onclick="return confirm('¿Confirmar rechazo del adelanto?');">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            {% else %}
+                            <small class="text-white-50">Gestionado por: {{ adv.admin_reviewer.nombre if adv.admin_reviewer else 'Desconocido' }}<br>
+                            {{ adv.fecha_revision.strftime('%Y-%m-%d %H:%M') if adv.fecha_revision else '' }}</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-white-50">No hay solicitudes de adelanto.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl)
+        })
+    });
+</script>
+{% endblock %}

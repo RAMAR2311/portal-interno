@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <h3><i class="fas fa-calendar-times text-primary"></i> Mis Solicitudes de Permisos</h3>
+            <p class="text-muted">Tramita vacaciones, permisos médicos, calamidades y ausencias temporales.</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Formulario -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 mb-4 position-sticky" style="top: 20px;">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">Nueva Solicitud</h5>
+                    <form action="{{ url_for('employee.solicitar_permiso') }}" method="POST">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tipo de Permiso</label>
+                            <select name="tipo_permiso" class="form-select" required>
+                                <option value="">Seleccione...</option>
+                                <option value="Vacaciones">Vacaciones</option>
+                                <option value="Cita Médica">Cita Médica (Horas/Día)</option>
+                                <option value="Calamidad">Calamidad Doméstica</option>
+                                <option value="Día Compensatorio">Día Compensatorio</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Rango de Fechas</label>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text"><i class="fas fa-calendar-day"></i></span>
+                                <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" placeholder="Desde" required>
+                            </div>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-calendar-day"></i></span>
+                                <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" placeholder="Hasta" required>
+                            </div>
+                            <small class="text-muted">Elige el mismo día si es sólo una jornada.</small>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Motivo / Explicación (Obligatorio)</label>
+                            <textarea name="motivo" class="form-control" rows="3" placeholder="Por favor detalla el motivo de tu solicitud..." required></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-paper-plane"></i> Enviar Solicitud
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historial -->
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0 fw-bold">Historial de Solicitudes</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Solicitado El</th>
+                                    <th>Tipo</th>
+                                    <th>Fechas (Del - Al)</th>
+                                    <th>Motivo</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in permisos %}
+                                <tr>
+                                    <td class="align-middle text-muted">{{ p.fecha_solicitud.strftime('%Y-%m-%d') }}</td>
+                                    <td class="align-middle fw-bold">{{ p.tipo_permiso }}</td>
+                                    <td class="align-middle">{{ p.fecha_inicio.strftime('%Y-%m-%d') }} a {{ p.fecha_fin.strftime('%Y-%m-%d') }}</td>
+                                    <td class="align-middle" title="{{ p.motivo }}">
+                                        {{ p.motivo|truncate(20) }}
+                                    </td>
+                                    <td class="align-middle">
+                                        {% if p.estado == 'Pendiente' %}
+                                            <span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> Pendiente</span>
+                                        {% elif p.estado == 'Aprobado' %}
+                                            <span class="badge bg-success"><i class="fas fa-check"></i> Aprobado</span>
+                                        {% else %}
+                                            <span class="badge bg-danger"><i class="fas fa-times"></i> Rechazado</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted border-bottom-0">
+                                        <i class="fas fa-box-open fa-2x mb-2 opacity-50"></i>
+                                        <p class="mb-0">Aún no has enviado ninguna solicitud.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

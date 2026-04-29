@@ -47,6 +47,82 @@ body {
     color: var(--primary-gold) !important;
 }
 
+/* --- Sidebar --- */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100vh;
+    background-color: var(--structure-black);
+    z-index: 1060;
+    transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.3);
+    overflow-y: auto;
+}
+
+.sidebar.active {
+    left: 0;
+}
+
+.sidebar-header {
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1050;
+    display: none;
+    backdrop-filter: blur(4px);
+}
+
+.sidebar-overlay.active {
+    display: block;
+}
+
+.sidebar-section-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    padding-left: 0.5rem;
+    letter-spacing: 1px;
+}
+
+.nav-link-sidebar {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    color: rgba(255, 255, 255, 0.8) !important;
+    border-radius: 8px;
+    transition: var(--transition-fast);
+    font-size: 0.9rem;
+}
+
+.nav-link-sidebar:hover, .nav-link-sidebar.active {
+    background-color: rgba(225, 177, 7, 0.1);
+    color: var(--primary-gold) !important;
+}
+
+.nav-link-sidebar i {
+    width: 20px;
+    text-align: center;
+}
+
+body.dark-mode .sidebar {
+    background-color: #000 !important;
+}
+
 /* --- Cards --- */
 .card {
     background-color: var(--surface-white);
@@ -186,6 +262,26 @@ body {
     outline: none;
 }
 
+label, .form-label, legend {
+    color: var(--structure-black);
+    font-weight: 500;
+}
+
+.form-text {
+    color: var(--text-dark);
+    opacity: 0.8;
+}
+
+body.dark-mode label, 
+body.dark-mode .form-label, 
+body.dark-mode legend {
+    color: #ffffff !important;
+}
+
+body.dark-mode .form-text {
+    color: #a0a0a0 !important;
+}
+
 /* --- Bootstrap Overrides (Eliminating Blue) --- */
 .text-primary {
     color: var(--primary-gold) !important;
@@ -312,6 +408,7 @@ a:hover {
     margin-bottom: 8px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     font-size: 0.95rem;
+    transition: background-color 1.5s ease-out, box-shadow 1.5s ease-out, border-color 1.5s ease-out;
 }
 
 /* My Messages (Sent) - Gold */
@@ -344,6 +441,20 @@ a:hover {
     color: #6c757d;
     margin-bottom: 4px;
     margin-left: 2px;
+}
+
+/* Unread Messages Highlight */
+.msg-item[data-unread="true"] .message-bubble {
+    background-color: rgba(232, 161, 161, 0.2); /* Very faint secondary pink */
+    box-shadow: 0 0 10px rgba(232, 161, 161, 0.5); /* Outer glow of pink */
+    border-right: 3px solid var(--secondary-pink);
+    transition: all 1s ease-out; /* Smooth transition when marked as read */
+}
+
+/* Let's adjust the dark mode too so it doesn't look weird */
+body.dark-mode .msg-item[data-unread="true"] .message-bubble {
+    background-color: rgba(232, 161, 161, 0.1); 
+    box-shadow: 0 0 10px rgba(232, 161, 161, 0.3);
 }
 
 /* --- Text Selection --- */

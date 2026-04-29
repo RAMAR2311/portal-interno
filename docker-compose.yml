@@ -8,8 +8,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - TZ=America/Bogota # <--- AGREGAR ESTA LÍNEA
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/portal_db
+      - TZ=America/Bogota
+      - DATABASE_URL=postgresql://postgres:admin123@db:5432/chatmc
       - SECRET_KEY=cambiar_esta_clave_en_produccion
       - FLASK_APP=app.py
       - FLASK_DEBUG=0
@@ -20,18 +20,18 @@ services:
       - /app/static/uploads
 
   db:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: portal_interno_db
     restart: always
     environment:
-      - TZ=America/Bogota # <--- AGREGAR ESTA LÍNEA
+      - TZ=America/Bogota
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=portal_db
+      - POSTGRES_PASSWORD=admin123
+      - POSTGRES_DB=chatmc
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      - "5432:5432"
 
 volumes:
-  postgres_data:
+  pgdata:

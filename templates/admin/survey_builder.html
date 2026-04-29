@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-8">
+        <h2 class="text-white mb-4"><i class="fas fa-poll text-warning me-2"></i> Crear Encuesta</h2>
+        
+        <div class="card glass-card border-0 shadow-lg mb-4" style="background-color: var(--card-bg); border: 1px solid var(--border-color) !important;">
+            <div class="card-body p-4">
+                <div class="mb-3">
+                    <label class="form-label text-white-50">Título de la Encuesta</label>
+                    <input type="text" id="surveyTitle" class="form-control premium-input form-control-lg" placeholder="Ej. Clima Laboral 2026">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-white-50">Descripción (Opcional)</label>
+                    <textarea id="surveyDesc" class="form-control premium-input" rows="2" placeholder="Instrucciones breves..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div id="questionsContainer">
+            <!-- Questions will be dynamically added here -->
+        </div>
+
+        <div class="text-center mb-4">
+            <button class="btn btn-outline-warning rounded-pill px-4 py-2 fw-bold" onclick="addQuestion()">
+                <i class="fas fa-plus"></i> Añadir Pregunta
+            </button>
+        </div>
+
+        <div class="d-grid gap-2 mb-5">
+            <button class="btn btn-warning btn-lg fw-bold" onclick="saveSurvey()">Guardar y Publicar Encuesta</button>
+            <a href="{{ url_for('admin.surveys_list') }}" class="btn btn-outline-light">Cancelar</a>
+        </div>
+    </div>
+</div>
+
+<template id="questionTemplate">
+    <div class="card glass-card border-0 shadow-sm mb-4 question-block" style="background-color: var(--card-bg); border: 1px solid var(--border-color) !important;">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <input type="text" class="form-control premium-input me-3 q-text" placeholder="Escribe tu pregunta aquí..." required>
+                <select class="form-select premium-input w-auto q-type" onchange="handleTypeChange(this)">
+                    <option value="Texto">Respuesta Corta</option>
+                    <option value="Opcion Multiple">Opción Múltiple</option>
+                    <option value="Calificacion">Calificación (1 a 5)</option>
+                </select>
+                <button class="btn btn-danger btn-sm ms-3" onclick="this.closest('.question-block').remove()">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+            
+            <div class="options-container d-none ps-3 border-start border-warning mt-3">
+                <div class="mb-2 d-flex align-items-center">
+                    <i class="fas fa-circle text-white-50 me-2" style="font-size: 0.5rem;"></i>
+                    <input type="text" class="form-control premium-input form-control-sm opt-text" placeholder="Opción 1">
+                </div>
+                <button class="btn btn-sm btn-link text-warning p-0 text-decoration-none mt-1" onclick="addOption(this)"><i class="fas fa-plus-circle"></i> Añadir opción</button>
+            </div>
+        </div>
+    </div>
+</template>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function addQuestion() {
+        const container = document.getElementById('questionsContainer');
+        const template = document.getElementById('questionTemplate').content.cloneNode(true);
+        container.appendChild(template);
+    }
+
+    function handleTypeChange(selectElem) {
+        const block = selectElem.closest('.question-block');
+        const optionsContainer = block.querySelector('.options-container');
+        if (selectElem.value === 'Opcion Multiple') {
+            optionsContainer.classList.remove('d-none');
+        } else {
+            optionsContainer.classList.add('d-none');
+        }
+    }
+
+    function addOption(btnElem) {
+        const container = btnElem.closest('.options-container');
+        const newOption = document.createElement('div');
+        newOption.className = 'mb-2 d-flex align-items-center';
+        newOption.innerHTML = `
+            <i class="fas fa-circle text-white-50 me-2" style="font-size: 0.5rem;"></i>
+            <input type="text" class="form-control premium-input form-control-sm opt-text" placeholder="Nueva opción">
+            <button class="btn btn-sm text-danger ms-2" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+        `;
+        container.insertBefore(newOption, btnElem);
+    }
+
+    function saveSurvey() {
+        const titulo = document.getElementById('surveyTitle').value.trim();
+        const descripcion = document.getElementById('surveyDesc').value.trim();
+        
+        if (!titulo) {
+            alert("El título es obligatorio");
+            document.getElementById('surveyTitle').focus();
+            return;
+        }
+
+        const questions = [];
+        const blocks = document.querySelectorAll('.question-block');
+        
+        let hasError = false;
+        blocks.forEach(block => {
+            const qText = block.querySelector('.q-text').value.trim();
+            const qType = block.querySelector('.q-type').value;
+            
+            if (!qText) {
+                hasError = true;
+                block.querySelector('.q-text').classList.add('is-invalid');
+            } else {
+                block.querySelector('.q-text').classList.remove('is-invalid');
+            }
+            
+            const questionData = {
+                texto_pregunta: qText,
+                tipo_respuesta: qType,
+                opciones: []
+            };
+
+            if (qType === 'Opcion Multiple') {
+                const optInputs = block.querySelectorAll('.opt-text');
+                optInputs.forEach(inp => {
+                    if (inp.value.trim()) {
+                        questionData.opciones.push(inp.value.trim());
+                    }
+                });
+                if (questionData.opciones.length < 2) {
+                    alert("Añade al menos 2 opciones en las preguntas de Opción Múltiple.");
+                    hasError = true;
+                }
+            }
+            questions.push(questionData);
+        });
+
+        if (hasError) return;
+        if (questions.length === 0) {
+            alert("Debes añadir al menos una pregunta.");
+            return;
+        }
+
+        fetch("{{ url_for('admin.create_survey') }}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                titulo: titulo,
+                descripcion: descripcion,
+                questions: questions
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === 'success') {
+                window.location.href = data.redirect;
+            } else {
+                alert("Error: " + data.message);
+            }
+        })
+        .catch(err => console.error(err));
+    }
+
+    // Add initial question
+    document.addEventListener("DOMContentLoaded", function() {
+        addQuestion();
+    });
+</script>
+{% endblock %}

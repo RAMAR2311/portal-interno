@@ -32,56 +32,90 @@
 
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+    <!-- Modern Sidebar -->
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h3 class="navbar-brand mb-0">CHAT MC</h3>
+            <button id="closeSidebar" class="btn-close btn-close-white"></button>
+        </div>
+        <div class="sidebar-user px-4 py-3 border-bottom border-secondary mb-3">
+            <div class="d-flex align-items-center">
+                <div class="avatar-circle-sm bg-gold text-dark me-3" style="width: 40px; height: 40px; line-height: 40px; text-align: center; border-radius: 50%; font-weight: bold;">
+                    {{ current_user.nombre[:1] if current_user.is_authenticated else '?' }}
+                </div>
+                <div>
+                    <p class="mb-0 fw-bold text-white">{{ current_user.nombre if current_user.is_authenticated else 'Invitado' }}</p>
+                    <small class="text-pink">{{ current_user.rol if current_user.is_authenticated else '' }}</small>
+                </div>
+            </div>
+        </div>
+        <ul class="sidebar-nav list-unstyled px-3">
+            {% if current_user.is_authenticated %}
+                <li class="nav-item-sidebar mb-2">
+                    <a href="{{ url_for('admin.dashboard' if current_user.rol == 'Admin' else 'employee.dashboard') }}" class="nav-link-sidebar">
+                        <i class="fas fa-th-large me-3"></i> Panel Principal
+                    </a>
+                </li>
+
+                {% if current_user.rol == 'Admin' %}
+                    <li class="sidebar-section-title">ADMINISTRACIÓN</li>
+                    <li><a href="{{ url_for('admin.create_user') }}" class="nav-link-sidebar"><i class="fas fa-user-plus me-3"></i> Crear Usuario</a></li>
+                    <li><a href="{{ url_for('admin.gestionar_adelantos') }}" class="nav-link-sidebar"><i class="fas fa-money-bill-wave me-3"></i> Adelantos</a></li>
+                    <li><a href="{{ url_for('admin.surveys_list') }}" class="nav-link-sidebar"><i class="fas fa-poll me-3"></i> Encuestas</a></li>
+                    <li><a href="{{ url_for('admin.horarios_lista') }}" class="nav-link-sidebar"><i class="fas fa-calendar-alt me-3"></i> Horarios</a></li>
+                    <li><a href="{{ url_for('admin.pausas_asignar') }}" class="nav-link-sidebar"><i class="fas fa-heartbeat me-3"></i> Pausas Activas</a></li>
+                    <li><a href="{{ url_for('admin.incapacidades_lista') }}" class="nav-link-sidebar"><i class="fas fa-notes-medical me-3"></i> Incapacidades</a></li>
+                    <li><a href="{{ url_for('admin.permisos_lista') }}" class="nav-link-sidebar"><i class="fas fa-envelope-open-text me-3"></i> Permisos</a></li>
+                {% else %}
+                    <li class="sidebar-section-title">MI PORTAL</li>
+                    <li><a href="{{ url_for('employee.solicitar_adelanto') }}" class="nav-link-sidebar"><i class="fas fa-hand-holding-usd me-3"></i> Adelantos</a></li>
+                    <li><a href="{{ url_for('employee.list_surveys') }}" class="nav-link-sidebar"><i class="fas fa-clipboard-list me-3"></i> Encuestas</a></li>
+                    <li><a href="{{ url_for('employee.mis_incapacidades') }}" class="nav-link-sidebar"><i class="fas fa-notes-medical me-3"></i> Mis Incapacidades</a></li>
+                    <li><a href="{{ url_for('employee.mis_permisos') }}" class="nav-link-sidebar"><i class="fas fa-envelope-open-text me-3"></i> Mis Permisos</a></li>
+                {% endif %}
+
+                <li class="sidebar-section-title">HERRAMIENTAS</li>
+                <li><a href="{{ url_for('calendar.index') }}" class="nav-link-sidebar {{ 'active' if 'calendar' in request.path }}"><i class="fas fa-calendar-alt me-3"></i> Calendario</a></li>
+                <li><a href="{{ url_for('training.index') }}" class="nav-link-sidebar {{ 'active' if 'training' in request.path }}"><i class="fas fa-graduation-cap me-3"></i> Capacitaciones</a></li>
+                <li class="position-relative">
+                    <a href="{{ url_for('chat.index') }}" class="nav-link-sidebar">
+                        <i class="fas fa-comments me-3"></i> Chat
+                        <span id="unread-badge-sidebar" class="badge rounded-pill bg-danger ms-2 {% if not unread_count or unread_count == 0 %}d-none{% endif %}">
+                            {{ unread_count or 0 }}
+                        </span>
+                    </a>
+                </li>
+                
+                <li class="mt-4">
+                    <a href="{{ url_for('auth.logout') }}" class="nav-link-sidebar text-danger">
+                        <i class="fas fa-sign-out-alt me-3"></i> Cerrar Sesión
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </div>
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4 sticky-top">
         <div class="container">
-            <a class="navbar-brand" href="#">CHAT MC</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    {% if current_user.is_authenticated %}
-                    {% if current_user.rol == 'Admin' %}
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}">Admin Dashboard</a>
-                    </li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.create_user') }}">Crear Usuario</a>
-                    </li>
-                    {% else %}
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('employee.dashboard') }}">Mi Panel</a>
-                    </li>
-                    {% endif %}
-                    <li class="nav-item">
-                        <a class="nav-link {{ 'active' if 'calendar' in request.path }}"
-                            href="{{ url_for('calendar.index') }}">
-                            <i class="fas fa-calendar-alt"></i> Calendario
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ 'active' if 'training' in request.path }}"
-                            href="{{ url_for('training.index') }}">
-                            <i class="fas fa-graduation-cap"></i> Capacitaciones
-                        </a>
-                    </li>
-                    <li class="nav-item position-relative">
-                        <a class="nav-link" href="{{ url_for('chat.index') }}">
-                            Chat
-                            <span id="unread-badge"
-                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger {% if not unread_count or unread_count == 0 %}d-none{% endif %}"
-                                style="font-size: 0.6em; top: 10px !important;">
-                                {{ unread_count or 0 }}
-                            </span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <button class="btn nav-link" id="darkModeToggle" title="Modo Oscuro">
-                            <i class="fas fa-moon"></i>
-                        </button>
-                    </li>
-                    <li class="nav-item"><span class="nav-link text-warning">Hola, {{ current_user.nombre }}</span></li>
-                    <li class="nav-item"><a class="nav-link btn btn-danger btn-sm text-white ms-2"
-                            href="{{ url_for('auth.logout') }}">Salir</a></li>
-                    {% endif %}
-                </ul>
+            <div class="d-flex align-items-center">
+                <button id="sidebarToggle" class="btn btn-link text-white me-3 p-0" style="font-size: 1.5rem;">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <a class="navbar-brand" href="{{ url_for('admin.dashboard' if current_user.rol == 'Admin' else 'employee.dashboard') }}">CHAT MC</a>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                {% if current_user.is_authenticated %}
+                <div class="d-none d-md-block text-end me-2">
+                    <small class="text-white-50 d-block" style="font-size: 0.7rem;">CONECTADO COMO</small>
+                    <span class="text-warning fw-bold">{{ current_user.nombre }}</span>
+                </div>
+                {% endif %}
+                
+                <button class="btn btn-link nav-link p-0" id="darkModeToggle" title="Modo Oscuro">
+                    <i class="fas fa-moon" style="font-size: 1.2rem;"></i>
+                </button>
             </div>
         </div>
     </nav>
@@ -150,11 +184,20 @@
         window.socket.on('new_message', function (msg) {
             if (!msg.is_me) {
                 const badge = document.getElementById('unread-badge');
+                const sidebarBadge = document.getElementById('unread-badge-sidebar');
+                
                 if (badge) {
                     let count = parseInt(badge.innerText) || 0;
                     badge.innerText = count + 1;
                     badge.classList.remove('d-none');
                 }
+                
+                if (sidebarBadge) {
+                    let count = parseInt(sidebarBadge.innerText) || 0;
+                    sidebarBadge.innerText = count + 1;
+                    sidebarBadge.classList.remove('d-none');
+                }
+                
                 if (!window.location.pathname.includes('/chat')) {
                     showToastNotification(msg);
                 }
@@ -163,12 +206,10 @@
 
         // --- Video Call Notifications ---
         window.socket.on('incoming_call', function (data) {
-            {% if current_user.is_authenticated %}
-            // Corregido: Cierre de llaves y paréntesis
-            if (parseInt(data.caller_id) === parseInt("{{ current_user.id }}")) {
+            const userIdMeta = document.querySelector('meta[name="user-id"]');
+            if (userIdMeta && parseInt(data.caller_id) === parseInt(userIdMeta.content)) {
                 return;
             }
-            {% endif %}
 
             document.getElementById('callCallerName').innerText = data.caller_name;
             document.getElementById('btnAcceptCall').href = "/chat/video_room/" + data.room_id;
@@ -229,6 +270,32 @@
             localStorage.setItem('darkMode', 'disabled');
         }
 
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const closeSidebar = document.getElementById('closeSidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.add('active');
+                sidebarOverlay.classList.add('active');
+            });
+        }
+
+        if (closeSidebar) {
+            closeSidebar.addEventListener('click', () => {
+                sidebar.classList.remove('active');
+                sidebarOverlay.classList.remove('active');
+            });
+        }
+
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', () => {
+                sidebar.classList.remove('active');
+                sidebarOverlay.classList.remove('active');
+            });
+        }
+
         const flashDiv = document.getElementById('flash-messages-data');
         if (flashDiv) {
             const messages = JSON.parse(flashDiv.dataset.messages);
@@ -259,7 +326,109 @@
             toast.show();
             newToast.addEventListener('hidden.bs.toast', () => newToast.remove());
         }
+
+        window.socket.on('new_incapacidad', function(data) {
+            showToast(`${data.empleado} ha reportado incapacidad por ${data.dias} días (${data.tipo}).`, "Nueva Incapacidad", "warning");
+            playRingtone(); // Opcional, pero util para alertas admin
+        });
+
+        window.socket.on('new_leave_request', function(data) {
+            showToast(`${data.empleado} ha solicitado: ${data.tipo}.`, "Nueva Solicitud de Permiso", "info");
+            playRingtone();
+        });
+
+        window.socket.on('leave_request_update', function(data) {
+            showToast(`Tu solicitud de ${data.tipo} ha sido ${data.estado}.`, "Actualización de Permiso", data.estado === 'Aprobado' ? "success" : "danger");
+            playRingtone();
+        });
+
+        // --- Active Pauses Notifications ---
+        window.socket.on('trigger_active_pause', function (data) {
+            const userIdMeta = document.querySelector('meta[name="user-id"]');
+            if (!userIdMeta) return;
+
+            document.getElementById('pauseTitle').innerText = data.titulo;
+            document.getElementById('pauseDescription').innerText = data.descripcion;
+            
+            const videoContainer = document.getElementById('pauseVideoContainer');
+            const videoFrame = document.getElementById('pauseVideo');
+            if (data.url_video) {
+                let embedUrl = data.url_video;
+                if(embedUrl.includes('watch?v=')) {
+                    embedUrl = embedUrl.replace('watch?v=', 'embed/');
+                }
+                videoFrame.src = embedUrl;
+                videoContainer.classList.remove('d-none');
+            } else {
+                videoContainer.classList.add('d-none');
+                videoFrame.src = '';
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('activePauseModal'));
+            modal.show();
+
+            // Notificar que la pausa inicia
+            fetch(`/employee/pausas/iniciar/${data.assignment_id}`, { method: 'POST' });
+
+            let timeRemaining = data.duracion_minutos * 60;
+            const timerEl = document.getElementById('pauseTimer');
+            const btnFinish = document.getElementById('btnFinishPause');
+            btnFinish.classList.add('d-none');
+
+            const updateTimerDisplay = () => {
+                const m = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+                const s = (timeRemaining % 60).toString().padStart(2, '0');
+                timerEl.innerText = `${m}:${s}`;
+            };
+            updateTimerDisplay();
+
+            const timerInterval = setInterval(() => {
+                timeRemaining--;
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    timerEl.innerText = "00:00 - ¡Tiempo Cumplido!";
+                    btnFinish.classList.remove('d-none');
+                } else {
+                    updateTimerDisplay();
+                }
+            }, 1000);
+
+            btnFinish.onclick = () => {
+                fetch(`/employee/pausas/finalizar/${data.assignment_id}`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(response => {
+                        modal.hide();
+                        videoFrame.src = ""; 
+                        window.location.reload();
+                    });
+            };
+        });
     </script>
+
+    <!-- Active Pause Modal -->
+    <div class="modal fade" id="activePauseModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true" style="z-index: 2050;">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content text-center">
+                <div class="modal-header bg-warning text-dark justify-content-center">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-heartbeat"></i> ¡Tiempo de Pausa Activa!</h5>
+                </div>
+                <div class="modal-body p-4">
+                    <h4 id="pauseTitle">Título de la Pausa</h4>
+                    <p id="pauseDescription" class="text-muted">Descripción detallada</p>
+                    <div id="pauseVideoContainer" class="ratio ratio-16x9 mb-3 d-none">
+                        <iframe id="pauseVideo" src="" allowfullscreen></iframe>
+                    </div>
+                    <div class="display-4 text-primary my-3 fw-bold" id="pauseTimer">00:00</div>
+                    <p class="text-muted small">Tu pantalla estará bloqueada hasta que finalice el tiempo.</p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-success btn-lg d-none" id="btnFinishPause">
+                        <i class="fas fa-check-circle"></i> Finalizar Pausa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     {% block scripts %}{% endblock %}
 </body>
 

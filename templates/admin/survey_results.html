@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="mt-4 mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="text-white mb-0"><i class="fas fa-chart-pie text-warning me-2"></i> Resultados: {{ survey.titulo }}</h2>
+        <p class="text-white-50 mb-0"><i class="fas fa-users me-1"></i> {{ responses|length }} respuestas recibidas</p>
+    </div>
+    <a href="{{ url_for('admin.surveys_list') }}" class="btn btn-outline-light">Volver a Encuestas</a>
+</div>
+
+<div class="row">
+    {% for r in responses %}
+    <div class="col-md-6 mb-4">
+        <div class="card glass-card border-0 h-100" style="background-color: var(--card-bg); border: 1px solid var(--border-color) !important;">
+            <div class="card-header border-0 bg-transparent pt-3 pb-0 d-flex align-items-center">
+                {% if r.user.foto_perfil %}
+                <img src="{{ url_for('static', filename='uploads/profile_pics/' + r.user.foto_perfil) }}" class="rounded-circle me-3" alt="Perfil" style="width: 40px; height: 40px; object-fit: cover;">
+                {% else %}
+                <div class="rounded-circle bg-secondary d-flex justify-content-center align-items-center me-3" style="width: 40px; height: 40px;">
+                    <i class="fas fa-user text-white"></i>
+                </div>
+                {% endif %}
+                <div>
+                    <h6 class="text-white mb-0">{{ r.user.nombre }}</h6>
+                    <small class="text-warning fw-bold">{{ r.user.cargo }}</small><br>
+                    <small class="text-white-50 opacity-75">{{ r.respondido_en.strftime('%Y-%m-%d %H:%M') }}</small>
+                </div>
+            </div>
+            <div class="card-body">
+                <hr class="border-secondary mt-0">
+                <ul class="list-unstyled mb-0">
+                    {% for ans in r.answers %}
+                    <li class="mb-3">
+                        <strong class="d-block text-warning mb-1" style="font-size: 0.95rem;">
+                            {{ loop.index }}. {{ ans.question.texto_pregunta }}
+                        </strong>
+                        <div class="text-white bg-dark bg-opacity-50 p-2 rounded-2 border border-secondary border-opacity-50">
+                            {% if ans.question.tipo_respuesta == 'Calificacion' %}
+                                <span class="badge bg-warning text-dark fs-6">{{ ans.respuesta_texto }}/5</span>
+                            {% else %}
+                                {{ ans.respuesta_texto }}
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="alert alert-info border-0 glass-card text-center py-5">
+            <i class="fas fa-folder-open text-white-50 fs-1 mb-3"></i>
+            <h5 class="text-white mb-0">Aún no hay respuestas para esta encuesta.</h5>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

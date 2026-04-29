@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()  # Carga .env antes de crear la app (necesario al correr con `python seed_admin.py`)
+
 from app import create_app, db
 from models import User
 import os

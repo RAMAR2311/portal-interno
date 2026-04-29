@@ -670,8 +670,11 @@
                 const msgId = msgEl.getAttribute('data-id');
                 if (msgId) {
                     unreadIds.push(msgId);
-                    msgEl.removeAttribute('data-unread');
                     unreadObserver.unobserve(msgEl);
+                    // Mantener el resplandor visual por 2.5 segundos para que el usuario logre notarlo
+                    setTimeout(() => {
+                        msgEl.removeAttribute('data-unread');
+                    }, 2500);
                 }
             }
         });

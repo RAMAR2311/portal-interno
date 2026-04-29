@@ -40,7 +40,7 @@
                                 </span>
                             </td>
                             <td>
-                                <button onclick="toggleUserStatus({{ user.id }})" class="btn btn-sm btn-outline-secondary me-1" title="Cambiar Estado">
+                                <button onclick="toggleUserStatus('{{ user.id }}')" class="btn btn-sm btn-outline-secondary me-1" title="Cambiar Estado">
                                     <i class="fas fa-power-off"></i>
                                 </button>
                                 <a href="{{ url_for('admin.edit_user', user_id=user.id) }}"

@@ -29,6 +29,9 @@ def handle_connect():
         for group in current_user.groups:
             join_room(f"group_{group.id}")
             
+        if current_user.rol == 'Admin':
+            join_room('admin_room')
+            
         # Broadcast online status
         emit('user_status', {'user_id': current_user.id, 'status': 'online'}, broadcast=True)
 

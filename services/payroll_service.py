@@ -3,7 +3,7 @@ from datetime import datetime
 import pytz
 from flask import render_template, current_app
 from xhtml2pdf import pisa
-from models import db, PayrollDoc, User
+from models import db, PayrollDoc, User, PayrollAdvance
 from werkzeug.utils import secure_filename
 import os
 
@@ -132,3 +132,58 @@ class PayrollService:
         db.session.commit()
         
         return True
+
+    @staticmethod
+    def request_advance(user_id: int, monto: float, motivo: str) -> tuple[bool, str]:
+        user = User.query.get(user_id)
+        if not user:
+            return False, "Usuario no encontrado."
+            
+        if user.salario is None or user.salario <= 0:
+            return False, "Usuario no tiene salario base registrado."
+            
+        if monto > (user.salario * 0.5):
+            return False, "El monto excede el 50% de su salario base."
+            
+        pending_adv = PayrollAdvance.query.filter_by(user_id=user_id, estado='Pendiente').first()
+        if pending_adv:
+            return False, "Ya tienes una solicitud de adelanto pendiente."
+            
+        try:
+            adv = PayrollAdvance(
+                user_id=user_id,
+                monto=monto,
+                motivo=motivo
+            )
+            db.session.add(adv)
+            db.session.commit()
+            return True, "Adelanto solicitado correctamente."
+        except Exception as e:
+            db.session.rollback()
+            return False, str(e)
+            
+    @staticmethod
+    def process_advance(advance_id: int, admin_id: int, action: str) -> tuple[bool, str]:
+        adv = PayrollAdvance.query.get(advance_id)
+        if not adv:
+            return False, "Solicitud no encontrada."
+            
+        if adv.estado != 'Pendiente':
+            return False, f"La solicitud ya fue procesada ({adv.estado})."
+            
+        if action == 'aprobar':
+            adv.estado = 'Aprobado'
+        elif action == 'rechazar':
+            adv.estado = 'Rechazado'
+        else:
+            return False, "Acción inválida."
+            
+        adv.fecha_revision = datetime.now(pytz.timezone('America/Bogota')).replace(tzinfo=None)
+        adv.revisado_por = admin_id
+        
+        try:
+            db.session.commit()
+            return True, f"Solicitud {adv.estado.lower()} correctamente."
+        except Exception as e:
+            db.session.rollback()
+            return False, str(e)
