@@ -511,6 +511,29 @@ def create_payroll():
     users: list[User] = User.query.filter(User.rol != 'Admin', User.is_active == True).all()
     return render_template('admin/create_payroll.html', users=users)
 
+@admin_bp.route('/eliminar_nomina/<int:doc_id>', methods=['POST'])
+@login_required
+def delete_payroll(doc_id):
+    if current_user.rol != 'Admin':
+        return redirect(url_for('employee.dashboard'))
+        
+    doc = PayrollDoc.query.get_or_404(doc_id)
+    user_id = doc.user_id
+    
+    if doc.filename:
+        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'payrolls', doc.filename)
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                flash(f'Error al eliminar el archivo físico: {str(e)}', 'warning')
+
+    db.session.delete(doc)
+    db.session.commit()
+    
+    flash('Reporte de nómina eliminado exitosamente.', 'success')
+    return redirect(url_for('admin.view_employee_profile', user_id=user_id))
+
 @admin_bp.route('/crear_comunicado', methods=['GET', 'POST'])
 @login_required
 def crear_comunicado():

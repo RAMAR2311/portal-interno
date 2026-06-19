@@ -181,6 +181,16 @@
     <script>
         window.socket = io();
 
+        // Solicitar permisos de notificación de escritorio en la primera interacción
+        document.addEventListener('click', function initNotifications() {
+            if ("Notification" in window) {
+                if (Notification.permission === "default") {
+                    Notification.requestPermission();
+                }
+            }
+            document.removeEventListener('click', initNotifications);
+        }, { once: true });
+
         window.socket.on('new_message', function (msg) {
             if (!msg.is_me) {
                 const badge = document.getElementById('unread-badge');
@@ -198,7 +208,7 @@
                     sidebarBadge.classList.remove('d-none');
                 }
                 
-                if (!window.location.pathname.includes('/chat')) {
+                if (!window.location.pathname.includes('/chat') || document.hidden) {
                     showToastNotification(msg);
                 }
             }
@@ -217,6 +227,18 @@
             const modal = new bootstrap.Modal(document.getElementById('incomingCallModal'));
             modal.show();
             playRingtone();
+
+            // Notificación de escritorio para videollamadas
+            if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+                const dNotification = new Notification("Videollamada Entrante", {
+                    body: data.caller_name + " te está invitando a una videollamada",
+                    icon: "{{ url_for('static', filename='img/favicon.jpg') }}"
+                });
+                dNotification.onclick = function() {
+                    window.focus();
+                    this.close();
+                };
+            }
         });
 
         let ringInterval;
@@ -325,6 +347,20 @@
             const toast = new bootstrap.Toast(newToast);
             toast.show();
             newToast.addEventListener('hidden.bs.toast', () => newToast.remove());
+
+            // --- Notificaciones de Escritorio ---
+            if ("Notification" in window && Notification.permission === "granted") {
+                if (document.hidden) {
+                    const dNotification = new Notification(title, {
+                        body: message,
+                        icon: "{{ url_for('static', filename='img/favicon.jpg') }}"
+                    });
+                    dNotification.onclick = function() {
+                        window.focus();
+                        this.close();
+                    };
+                }
+            }
         }
 
         window.socket.on('new_incapacidad', function(data) {

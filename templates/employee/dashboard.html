@@ -304,10 +304,19 @@
                                 <td class="text-muted small">{{ doc.created_at.strftime('%d/%m/%Y') }}
                                 </td>
                                 <td class="text-end pe-4">
-                                    <a href="{{ url_for('employee.download_payroll', doc_id=doc.id) }}"
-                                        class="btn btn-outline-primary btn-sm rounded-pill btn-icon-only">
-                                        <i class="fas fa-download"></i>
-                                    </a>
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <a href="{{ url_for('employee.download_payroll', doc_id=doc.id) }}"
+                                            class="btn btn-outline-primary btn-sm rounded-pill btn-icon-only">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        {% if is_admin_view %}
+                                        <form action="{{ url_for('admin.delete_payroll', doc_id=doc.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar este reporte de nómina?');">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill btn-icon-only" title="Eliminar Nómina">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
