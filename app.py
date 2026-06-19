@@ -95,4 +95,4 @@ if __name__ == '__main__':
     print("\n--- Servidor iniciado ---")
     print("Para acceder al portal, abre tu navegador en: http://localhost:5000")
     print("--------------------------\n")
-    socketio.run(app, host='127.0.0.1', port=5000, debug=True)
+    socketio.run(app, host='127.0.0.1', port=5000, debug=False)

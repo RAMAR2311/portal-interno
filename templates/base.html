@@ -466,6 +466,35 @@
         </div>
     </div>
     {% block scripts %}{% endblock %}
+
+    <!-- Script para bloquear clic derecho y consola de desarrollador -->
+    <script>
+        // 1. Deshabilitar el clic derecho en toda la página
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        // 2. Deshabilitar teclas específicas
+        document.addEventListener('keydown', function(e) {
+            // Bloquear F12
+            if (e.key === 'F12' || e.keyCode === 123) {
+                e.preventDefault();
+            }
+            // Bloquear Ctrl+Shift+I (Inspeccionar en Chrome)
+            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) {
+                e.preventDefault();
+            }
+            // Bloquear Ctrl+Shift+J (Consola en Chrome)
+            if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) {
+                e.preventDefault();
+            }
+            // Bloquear Ctrl+Shift+C (Inspeccionar Elemento)
+            if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67)) {
+                e.preventDefault();
+            }
+            // Bloquear Ctrl+U (Ver código fuente de la página)
+            if (e.ctrlKey && (e.key === 'U' || e.key === 'u' || e.keyCode === 85)) {
+                e.preventDefault();
+            }
+        });
+    </script>
 </body>
 
 </html>
