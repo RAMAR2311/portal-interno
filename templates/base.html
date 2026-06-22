@@ -181,12 +181,30 @@
     <script>
         window.socket = io();
 
+        // Debugging logs for Socket.IO
+        window.socket.on('connect', () => {
+            console.log('✅ Socket.IO Conectado exitosamente');
+        });
+        window.socket.on('disconnect', (reason) => {
+            console.warn('⚠️ Socket.IO Desconectado. Razón:', reason);
+        });
+        window.socket.on('connect_error', (error) => {
+            console.error('❌ Socket.IO Error de conexión (Posible fallo de WebSockets/Nginx Upgrade):', error);
+        });
+
         // Solicitar permisos de notificación de escritorio en la primera interacción
         document.addEventListener('click', function initNotifications() {
             if ("Notification" in window) {
                 if (Notification.permission === "default") {
-                    Notification.requestPermission();
+                    console.log("Solicitando permisos de notificación al usuario...");
+                    Notification.requestPermission().then(permission => {
+                        console.log("Permiso de notificación actualizado:", permission);
+                    });
+                } else {
+                    console.log("Permiso de notificación actual:", Notification.permission);
                 }
+            } else {
+                console.warn("El navegador no soporta la Notification API");
             }
             document.removeEventListener('click', initNotifications);
         }, { once: true });
@@ -229,15 +247,22 @@
             playRingtone();
 
             // Notificación de escritorio para videollamadas
-            if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
-                const dNotification = new Notification("Videollamada Entrante", {
-                    body: data.caller_name + " te está invitando a una videollamada",
-                    icon: "{{ url_for('static', filename='img/favicon.jpg') }}"
-                });
-                dNotification.onclick = function() {
-                    window.focus();
-                    this.close();
-                };
+            if ("Notification" in window && Notification.permission === "granted") {
+                if (document.hidden) {
+                    console.log("Lanzando notificación nativa de escritorio (Videollamada)");
+                    const dNotification = new Notification("Videollamada Entrante", {
+                        body: data.caller_name + " te está invitando a una videollamada",
+                        icon: "{{ url_for('static', filename='img/favicon.jpg') }}"
+                    });
+                    dNotification.onclick = function() {
+                        window.focus();
+                        this.close();
+                    };
+                } else {
+                    console.log("Notificación nativa de videollamada omitida por pestaña activa (document.hidden = false)");
+                }
+            } else {
+                console.log("No se pudo lanzar notificación de videollamada. Permiso:", "Notification" in window ? Notification.permission : "No soportado");
             }
         });
 
@@ -351,6 +376,7 @@
             // --- Notificaciones de Escritorio ---
             if ("Notification" in window && Notification.permission === "granted") {
                 if (document.hidden) {
+                    console.log("Lanzando notificación nativa de escritorio:", title);
                     const dNotification = new Notification(title, {
                         body: message,
                         icon: "{{ url_for('static', filename='img/favicon.jpg') }}"
@@ -359,7 +385,11 @@
                         window.focus();
                         this.close();
                     };
+                } else {
+                    console.log(`Notificación nativa '${title}' omitida porque la pestaña está activa (document.hidden = false)`);
                 }
+            } else {
+                console.log(`No se pudo lanzar notificación nativa '${title}'. Soportado:`, "Notification" in window, "Permiso:", "Notification" in window ? Notification.permission : "No soportado");
             }
         }
 
@@ -467,8 +497,9 @@
     </div>
     {% block scripts %}{% endblock %}
 
-    <!-- Script para bloquear clic derecho y consola de desarrollador -->
+    <!-- Script para bloquear clic derecho y consola de desarrollador (TEMPORALMENTE DESHABILITADO PARA PRUEBAS) -->
     <script>
+        /*
         // 1. Deshabilitar el clic derecho en toda la página
         document.addEventListener('contextmenu', event => event.preventDefault());
         // 2. Deshabilitar teclas específicas
@@ -494,6 +525,7 @@
                 e.preventDefault();
             }
         });
+        */
     </script>
 </body>
 

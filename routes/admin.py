@@ -761,7 +761,7 @@ def pausas_asignar():
                 'descripcion': pausa.descripcion,
                 'url_video': pausa.url_video,
                 'duracion_minutos': pausa.duracion_minutos
-            }, room=str(user_id))
+            }, to=str(user_id))
             flash('Pausa Activa lanzada inmediatamente.', 'success')
         else:
             flash('Pausa Activa programada exitosamente.', 'success')
@@ -795,7 +795,7 @@ def pausas_lanzar(id):
         'descripcion': pausa.descripcion,
         'url_video': pausa.url_video,
         'duracion_minutos': pausa.duracion_minutos
-    }, room=str(asignacion.user_id))
+    }, to=str(asignacion.user_id))
     
     return jsonify({'status': 'success', 'message': 'Pausa lanzada'})
 
@@ -961,7 +961,7 @@ def gestionar_permiso(id):
         socketio.emit('leave_request_update', {
             'tipo': permiso.tipo_permiso,
             'estado': nuevo_estado,
-        }, room=str(permiso.user_id))
+        }, to=str(permiso.user_id))
         
         flash(f'Permiso {nuevo_estado.lower()}.', 'success')
     else:

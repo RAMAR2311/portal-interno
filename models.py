@@ -11,6 +11,9 @@ def get_bogota_time():
     return datetime.now(bogota_tz).replace(tzinfo=None)
 
 class User(UserMixin, db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(512))
@@ -57,6 +60,9 @@ class User(UserMixin, db.Model):
 
 
 class Training(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(150), nullable=False)
     description = db.Column(db.Text)
@@ -70,6 +76,9 @@ class Training(db.Model):
 
 
 class TimeLog(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     new_status = db.Column(db.String(20), nullable=False)
@@ -82,6 +91,9 @@ group_members = db.Table('group_members',
 )
 
 class Group(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -92,6 +104,9 @@ class Group(db.Model):
         backref=db.backref('groups', lazy=True))
 
 class Message(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
@@ -105,6 +120,9 @@ class Message(db.Model):
 
 
 class PayrollDoc(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     mes = db.Column(db.String(20), nullable=False)
@@ -125,6 +143,9 @@ class PayrollDoc(db.Model):
     neto_pagar = db.Column(db.Float, default=0.0)
 
 class Comunicado(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     titulo = db.Column(db.String(200), nullable=False)
     contenido = db.Column(db.Text, nullable=False)
@@ -144,6 +165,9 @@ event_attendees = db.Table('event_attendees',
 )
 
 class CalendarEvent(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     title = db.Column(db.String(100), nullable=False)
@@ -159,6 +183,9 @@ class CalendarEvent(db.Model):
         backref=db.backref('attending_events', lazy=True))
 
 class PayrollAdvance(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     monto = db.Column(db.Numeric(12, 2), nullable=False)
@@ -174,6 +201,9 @@ class PayrollAdvance(db.Model):
 
 
 class Survey(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     titulo = db.Column(db.String(200), nullable=False)
     descripcion = db.Column(db.Text, nullable=True)
@@ -184,6 +214,9 @@ class Survey(db.Model):
     responses = db.relationship('SurveyResponse', backref='survey', lazy=True, cascade='all, delete-orphan')
 
 class SurveyQuestion(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     survey_id = db.Column(db.Integer, db.ForeignKey('survey.id'), nullable=False)
     texto_pregunta = db.Column(db.String(500), nullable=False)
@@ -192,11 +225,17 @@ class SurveyQuestion(db.Model):
     options = db.relationship('SurveyOption', backref='question', lazy=True, cascade='all, delete-orphan')
 
 class SurveyOption(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     question_id = db.Column(db.Integer, db.ForeignKey('survey_question.id'), nullable=False)
     texto_opcion = db.Column(db.String(200), nullable=False)
 
 class SurveyResponse(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     survey_id = db.Column(db.Integer, db.ForeignKey('survey.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -207,6 +246,9 @@ class SurveyResponse(db.Model):
     answers = db.relationship('SurveyAnswer', backref='response', lazy=True, cascade='all, delete-orphan')
 
 class SurveyAnswer(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     response_id = db.Column(db.Integer, db.ForeignKey('survey_response.id'), nullable=False)
     question_id = db.Column(db.Integer, db.ForeignKey('survey_question.id'), nullable=False)
@@ -215,6 +257,9 @@ class SurveyAnswer(db.Model):
     question = db.relationship('SurveyQuestion', foreign_keys=[question_id])
 
 class ActivePause(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     titulo = db.Column(db.String(150), nullable=False)
     descripcion = db.Column(db.Text, nullable=True)
@@ -223,6 +268,9 @@ class ActivePause(db.Model):
     creado_en = db.Column(db.DateTime, default=get_bogota_time)
 
 class PauseAssignment(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     pause_id = db.Column(db.Integer, db.ForeignKey('active_pause.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -235,6 +283,9 @@ class PauseAssignment(db.Model):
     user = db.relationship('User', foreign_keys=[user_id], backref='pauses_assigned', lazy=True)
 
 class Incapacidad(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     tipo = db.Column(db.String(50), nullable=False) # Enfermedad General, Accidente Laboral, Licencia
@@ -252,6 +303,9 @@ class Incapacidad(db.Model):
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('incapacidades', lazy=True))
 
 class WeeklySchedule(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     dia_semana = db.Column(db.Integer, nullable=False) # 0=Lunes, 1=Martes... 6=Domingo
@@ -264,6 +318,9 @@ class WeeklySchedule(db.Model):
     )
 
 class LeaveRequest(db.Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     tipo_permiso = db.Column(db.String(50), nullable=False) # Vacaciones, Cita Médica, Calamidad, Otro
